@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Porter Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a1929 0%, #2d3e50 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 4rem;
+            color: white;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: #4ecdc4;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 3rem;
+            line-height: 1.6;
+        }
+
+        .doc-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .doc-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+            color: #1a2332;
+            display: block;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(78, 205, 196, 0.4);
+        }
+
+        .doc-card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .doc-card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #0a1929;
+        }
+
+        .doc-card-desc {
+            color: #6c757d;
+            line-height: 1.5;
+        }
+
+        .quick-start {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .quick-start h3 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .quick-start code {
+            display: block;
+            background: rgba(0, 0, 0, 0.3);
+            color: #4ecdc4;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .footer {
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 3rem;
+            }
+
+            .tagline {
+                font-size: 1.2rem;
+            }
+
+            .doc-links {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚓ Porter</h1>
+        <p class="tagline">The Port Authority for Your Development Environment</p>
+        <p class="subtitle">
+            Map custom subdomains to your local services. Simplify development with automatic
+            hosts file management and clean, memorable URLs.
+        </p>
+
+        <div class="doc-links">
+            <a href="index.html" class="doc-card">
+                <div class="doc-card-icon">📚</div>
+                <div class="doc-card-title">Full Documentation</div>
+                <div class="doc-card-desc">
+                    Complete guide with detailed commands, workflows, troubleshooting, and examples
+                </div>
+            </a>
+
+            <a href="quick-reference.html" class="doc-card">
+                <div class="doc-card-icon">⚡</div>
+                <div class="doc-card-title">Quick Reference</div>
+                <div class="doc-card-desc">
+                    Fast command lookup, cheat sheets, and common usage patterns
+                </div>
+            </a>
+        </div>
+
+        <div class="quick-start">
+            <h3>🚀 Quick Start</h3>
+            <code># 1. Set your base domain
+porter set base localhost
+
+# 2. Map a subdomain to a port
+sudo porter map api 3000
+
+# 3. Open in browser
+porter open api
+
+# Opens: http://api.localhost:3000</code>
+        </div>
+
+        <p class="footer">
+            Built with 🌊 for developers who value clean harbors<br>
+            by Josh Kornreich
+        </p>
+    </div>
+</body>
+</html>

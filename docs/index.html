@@ -1,0 +1,2327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Porter - The Port Authority CLI for managing local development ports and hosts">
+    <title>Porter - Port Authority Documentation</title>
+    <style>
+        /* ========================================
+           CSS Variables - Nautical Theme
+           ======================================== */
+        :root {
+            --navy-deep: #0a1929;
+            --navy-dark: #1a2332;
+            --navy-medium: #2d3e50;
+            --navy-light: #4a5f7f;
+            --seafoam: #4ecdc4;
+            --seafoam-light: #7ae1d8;
+            --seafoam-dark: #3ba89f;
+            --ocean-blue: #2c5f8d;
+            --sky-blue: #5b9bd5;
+            --sand: #f4e8c1;
+            --rope: #8b7355;
+            --gold: #ffd700;
+            --white: #ffffff;
+            --light-gray: #f8f9fa;
+            --gray: #6c757d;
+            --red: #dc3545;
+            --green: #28a745;
+
+            /* Dark mode colors */
+            --dm-bg: #0a1929;
+            --dm-bg-alt: #1a2332;
+            --dm-text: #e8eaed;
+            --dm-text-muted: #9aa0a6;
+            --dm-border: #2d3e50;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: var(--white);
+            --bg-secondary: var(--light-gray);
+            --bg-tertiary: #e9ecef;
+            --text-primary: var(--navy-deep);
+            --text-secondary: var(--navy-medium);
+            --text-muted: var(--gray);
+            --border-color: #dee2e6;
+            --code-bg: #f8f9fa;
+            --accent: var(--seafoam);
+            --accent-hover: var(--seafoam-dark);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: var(--dm-bg);
+            --bg-secondary: var(--dm-bg-alt);
+            --bg-tertiary: var(--navy-medium);
+            --text-primary: var(--dm-text);
+            --text-secondary: var(--dm-text-muted);
+            --text-muted: #868e96;
+            --border-color: var(--dm-border);
+            --code-bg: var(--navy-dark);
+            --accent: var(--seafoam-light);
+            --accent-hover: var(--seafoam);
+        }
+
+        /* ========================================
+           Base Styles
+           ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* ========================================
+           Typography
+           ======================================== */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        h4 {
+            font-size: 1.25rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
+        code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.9em;
+            padding: 0.2em 0.4em;
+            background-color: var(--code-bg);
+            border-radius: 3px;
+            color: var(--accent);
+        }
+
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* ========================================
+           Header & Navigation
+           ======================================== */
+        .header {
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--ocean-blue) 100%);
+            color: var(--white);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav a {
+            color: var(--white);
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav a:hover {
+            color: var(--seafoam);
+            text-decoration: none;
+        }
+
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* ========================================
+           Hero Section
+           ======================================== */
+        .hero {
+            background: linear-gradient(135deg, var(--navy-deep) 0%, var(--ocean-blue) 50%, var(--sky-blue) 100%);
+            color: var(--white);
+            padding: 4rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: "⚓";
+            position: absolute;
+            font-size: 20rem;
+            opacity: 0.05;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--seafoam-light);
+            font-weight: 300;
+        }
+
+        .hero .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: var(--seafoam);
+            color: var(--navy-deep);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--seafoam-light);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--white);
+            border: 2px solid var(--white);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--white);
+            color: var(--navy-deep);
+            transform: translateY(-2px);
+        }
+
+        /* ========================================
+           Main Content
+           ======================================== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        /* ========================================
+           Sidebar
+           ======================================== */
+        .sidebar {
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-nav {
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .sidebar-nav h3 {
+            font-size: 1rem;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-nav a {
+            color: var(--text-secondary);
+            display: block;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .sidebar-nav a:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--accent);
+            text-decoration: none;
+            padding-left: 1rem;
+        }
+
+        .sidebar-nav a.active {
+            background-color: var(--accent);
+            color: var(--navy-deep);
+            font-weight: 600;
+        }
+
+        /* ========================================
+           Content Sections
+           ======================================== */
+        .content {
+            min-width: 0;
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+        }
+
+        /* ========================================
+           Command Reference
+           ======================================== */
+        .command-search {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            margin-bottom: 2rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .command-search:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .command-group {
+            margin-bottom: 3rem;
+        }
+
+        .command-group-title {
+            color: var(--accent);
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .command-item {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .command-item:hover {
+            border-color: var(--accent);
+            box-shadow: 0 2px 8px rgba(78, 205, 196, 0.1);
+        }
+
+        .command-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .command-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 1.1rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .command-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .command-syntax {
+            background-color: var(--code-bg);
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .command-syntax code {
+            background: none;
+            color: var(--text-primary);
+        }
+
+        .command-options {
+            margin-top: 1rem;
+        }
+
+        .command-options h5 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .option {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            padding-left: 1rem;
+        }
+
+        .option-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: var(--accent);
+            min-width: 150px;
+            font-size: 0.9rem;
+        }
+
+        .option-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* ========================================
+           Code Examples
+           ======================================== */
+        .example {
+            margin: 1.5rem 0;
+        }
+
+        .example-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .code-block {
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: var(--accent);
+            color: var(--navy-deep);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            opacity: 0;
+        }
+
+        .code-block:hover .copy-btn {
+            opacity: 1;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--seafoam-light);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background-color: var(--green);
+            color: var(--white);
+        }
+
+        /* ========================================
+           Collapsible Sections
+           ======================================== */
+        .collapsible {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            user-select: none;
+        }
+
+        .collapsible::before {
+            content: "▼";
+            font-size: 0.8rem;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        .collapsible.collapsed::before {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            max-height: 2000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        /* ========================================
+           Badges & Labels
+           ======================================== */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-required {
+            background-color: var(--red);
+            color: var(--white);
+        }
+
+        .badge-optional {
+            background-color: var(--gray);
+            color: var(--white);
+        }
+
+        .badge-new {
+            background-color: var(--seafoam);
+            color: var(--navy-deep);
+        }
+
+        /* ========================================
+           Alerts & Callouts
+           ======================================== */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background-color: rgba(91, 155, 213, 0.1);
+            border-color: var(--sky-blue);
+            color: var(--text-primary);
+        }
+
+        .alert-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-color: #ffc107;
+            color: var(--text-primary);
+        }
+
+        .alert-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            border-color: var(--green);
+            color: var(--text-primary);
+        }
+
+        .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-color: var(--red);
+            color: var(--text-primary);
+        }
+
+        .alert strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* ========================================
+           Tables
+           ======================================== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ========================================
+           Footer
+           ======================================== */
+        .footer {
+            background-color: var(--navy-deep);
+            color: var(--white);
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer a {
+            color: var(--seafoam);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* ========================================
+           Responsive Design
+           ======================================== */
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .tagline {
+                font-size: 1.2rem;
+            }
+
+            .nav {
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .option {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .option-name {
+                min-width: auto;
+            }
+        }
+
+        /* ========================================
+           Utility Classes
+           ======================================== */
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+        .mt-4 { margin-top: 2rem; }
+
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .mb-4 { margin-bottom: 2rem; }
+
+        .hidden {
+            display: none;
+        }
+
+        /* ========================================
+           Animations
+           ======================================== */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        /* ========================================
+           Print Styles
+           ======================================== */
+        @media print {
+            .header, .sidebar, .theme-toggle, .copy-btn, .footer {
+                display: none;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                page-break-after: always;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: underline;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">⚓</span>
+                <span>Porter</span>
+            </div>
+            <nav class="nav">
+                <a href="#getting-started">Getting Started</a>
+                <a href="#commands">Commands</a>
+                <a href="#workflows">Workflows</a>
+                <a href="#faq">FAQ</a>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙 Dark Mode</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>⚓ Porter</h1>
+            <p class="tagline">The Port Authority for Your Development Environment</p>
+            <p class="subtitle">
+                Map custom subdomains to your local services. Simplify development by routing
+                api.localhost, app.localhost, and more to the right ports - automatically.
+            </p>
+            <div class="cta-buttons">
+                <a href="#getting-started" class="btn btn-primary">Get Started</a>
+                <a href="#commands" class="btn btn-secondary">View Commands</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="content-grid">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav class="sidebar-nav">
+                    <h3>Navigation</h3>
+                    <ul>
+                        <li><a href="#getting-started">Getting Started</a></li>
+                        <li><a href="#installation">Installation</a></li>
+                        <li><a href="#concepts">Core Concepts</a></li>
+                        <li><a href="#commands">Command Reference</a></li>
+                        <li><a href="#workflows">Common Workflows</a></li>
+                        <li><a href="#advanced">Advanced Topics</a></li>
+                        <li><a href="#troubleshooting">Troubleshooting</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="content">
+                <!-- Getting Started -->
+                <section id="getting-started" class="section">
+                    <h2>🚢 Getting Started</h2>
+
+                    <div class="card">
+                        <h3>What is Porter?</h3>
+                        <p>
+                            Porter is a command-line tool that simplifies local development by mapping custom subdomains
+                            to your local services. Instead of remembering port numbers, just use clean subdomain names.
+                            Porter handles the complexity of hosts file management and URL routing automatically.
+                        </p>
+                        <ul>
+                            <li>Map subdomains to ports (e.g., <code>api.localhost:3000</code>)</li>
+                            <li>Automatic <code>/etc/hosts</code> file management with backups</li>
+                            <li>Open services in browser with one command</li>
+                            <li>Persistent configuration across sessions</li>
+                            <li>Cross-platform support (macOS, Linux, Windows)</li>
+                            <li>Beautiful, colorful terminal output</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>💡 Pro Tip:</strong>
+                        Think of Porter as your harbor master - it assigns each service (ship) a friendly name and
+                        dock (port), so you never have to remember which port number is which service.
+                    </div>
+                </section>
+
+                <!-- Installation -->
+                <section id="installation" class="section">
+                    <h2>📦 Installation</h2>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="card-icon">🔧</span>
+                            <h3>Quick Install</h3>
+                        </div>
+
+                        <div class="example">
+                            <p class="example-title">Build and install from source:</p>
+                            <div class="code-block">
+                                <pre><code>git clone https://github.com/yourusername/port-authority.git
+cd port-authority
+cargo install --path .</code></pre>
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            </div>
+                        </div>
+
+                        <div class="example">
+                            <p class="example-title">Quick start:</p>
+                            <div class="code-block">
+                                <pre><code># Set your base domain
+porter set base localhost
+
+# Map a subdomain to a port
+porter map api 3000
+
+# Open in browser
+porter open api</code></pre>
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>System Requirements</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Requirement</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Operating System</td>
+                                    <td>macOS, Linux, or Windows 10+</td>
+                                </tr>
+                                <tr>
+                                    <td>Rust (for building)</td>
+                                    <td>1.70+ (latest stable recommended)</td>
+                                </tr>
+                                <tr>
+                                    <td>Permissions</td>
+                                    <td>Admin/sudo required for hosts file management</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>~5MB (including configuration)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Permission Note:</strong>
+                        Modifying the hosts file requires elevated permissions. On macOS/Linux, run commands with <code>sudo</code>.
+                        On Windows, run your terminal as Administrator.
+                    </div>
+                </section>
+
+                <!-- Core Concepts -->
+                <section id="concepts" class="section">
+                    <h2>🧭 Core Concepts</h2>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <span class="card-icon">🛟</span>
+                            <h3>Understanding Subdomain Mapping</h3>
+                        </div>
+                        <p>
+                            Porter creates a mapping between memorable subdomain names and port numbers. Instead of
+                            accessing your API at <code>localhost:3000</code>, you can use <code>api.localhost:3000</code>.
+                            Porter manages your hosts file automatically, so these domains work seamlessly.
+                        </p>
+                    </div>
+
+                    <div class="card">
+                        <h4>How It Works</h4>
+                        <ol>
+                            <li><strong>Set Base Domain</strong> - Configure your base domain (usually <code>localhost</code>)</li>
+                            <li><strong>Create Mappings</strong> - Map subdomains to ports (e.g., <code>api</code> → <code>3000</code>)</li>
+                            <li><strong>Hosts File Updated</strong> - Porter adds entries to <code>/etc/hosts</code> automatically</li>
+                            <li><strong>Access Services</strong> - Use clean URLs like <code>http://api.localhost:3000</code></li>
+                        </ol>
+                    </div>
+
+                    <div class="card">
+                        <h4>Example Mappings</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subdomain</th>
+                                    <th>Port</th>
+                                    <th>Full URL</th>
+                                    <th>Typical Use</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>app</code></td>
+                                    <td>3000</td>
+                                    <td>http://app.localhost:3000</td>
+                                    <td>Frontend application</td>
+                                </tr>
+                                <tr>
+                                    <td><code>api</code></td>
+                                    <td>8080</td>
+                                    <td>http://api.localhost:8080</td>
+                                    <td>Backend API</td>
+                                </tr>
+                                <tr>
+                                    <td><code>admin</code></td>
+                                    <td>4000</td>
+                                    <td>http://admin.localhost:4000</td>
+                                    <td>Admin dashboard</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docs</code></td>
+                                    <td>3001</td>
+                                    <td>http://docs.localhost:3001</td>
+                                    <td>Documentation site</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <h4>Hosts File Management</h4>
+                        <p>Porter automatically manages entries in your hosts file between special markers:</p>
+                        <div class="code-block">
+                            <pre><code># BEGIN PORTER MANAGED
+127.0.0.1    api.localhost    # porter:port=3000
+127.0.0.1    app.localhost    # porter:port=8080
+# END PORTER MANAGED</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <p>
+                            Porter creates automatic backups before making changes, ensuring your hosts file is always safe.
+                            All Porter-managed entries are clearly marked and isolated from other system entries.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Command Reference -->
+                <section id="commands" class="section">
+                    <h2>📋 Command Reference</h2>
+
+                    <input
+                        type="text"
+                        class="command-search"
+                        id="commandSearch"
+                        placeholder="🔍 Search commands... (e.g., 'list', 'kill', 'hosts')"
+                        onkeyup="filterCommands()"
+                    >
+
+                    <!-- Port Management Commands -->
+                    <div class="command-group" data-category="port">
+                        <h3 class="command-group-title">⚓ Port Management Commands</h3>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter list</div>
+                                    <span class="badge badge-new">Core</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Lists all active ports and the processes using them. Your go-to command for seeing
+                                what's running in your development harbor.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter list [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--range, -r</span>
+                                    <span class="option-desc">Specify port range (e.g., 3000-8000)</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--filter, -f</span>
+                                    <span class="option-desc">Filter by process name</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--json</span>
+                                    <span class="option-desc">Output in JSON format</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--verbose, -v</span>
+                                    <span class="option-desc">Show detailed process information</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># List all active ports
+porter list
+
+# List ports in common dev range
+porter list --range 3000-8080
+
+# Find all Node.js processes
+porter list --filter node
+
+# Get detailed JSON output
+porter list --json --verbose</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter check</div>
+                                    <span class="badge badge-new">Core</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Check if a specific port is available or in use. Returns detailed information about
+                                the occupying process if the port is taken.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter check &lt;PORT&gt; [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--kill, -k</span>
+                                    <span class="option-desc">Kill the process if port is in use</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--wait, -w</span>
+                                    <span class="option-desc">Wait for port to become available</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--timeout</span>
+                                    <span class="option-desc">Timeout for wait operation (seconds)</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Check if port 3000 is available
+porter check 3000
+
+# Check and kill if occupied
+porter check 8080 --kill
+
+# Wait up to 30 seconds for port to be available
+porter check 5000 --wait --timeout 30</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter kill</div>
+                                    <span class="badge badge-required">Requires Elevated Permissions</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Terminate the process using a specific port. Use with caution - this is the equivalent
+                                of ordering a ship to leave the harbor immediately.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter kill &lt;PORT&gt; [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--force, -f</span>
+                                    <span class="option-desc">Force kill (SIGKILL instead of SIGTERM)</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--all, -a</span>
+                                    <span class="option-desc">Kill all processes on the port</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--yes, -y</span>
+                                    <span class="option-desc">Skip confirmation prompt</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Kill process on port 3000 (with confirmation)
+porter kill 3000
+
+# Force kill without confirmation
+porter kill 8080 --force --yes
+
+# Kill all processes on port 5000
+porter kill 5000 --all</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                            <div class="alert alert-danger">
+                                <strong>⚠️ Warning:</strong>
+                                Killing processes can cause data loss or system instability. Always verify what you're
+                                killing before proceeding.
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter find</div>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Find an available port within a specified range. Perfect for when you need a free dock
+                                for your service.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter find [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--range, -r</span>
+                                    <span class="option-desc">Port range to search (default: 3000-9000)</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--count, -c</span>
+                                    <span class="option-desc">Number of available ports to find</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--sequential</span>
+                                    <span class="option-desc">Find sequential ports</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Find one available port
+porter find
+
+# Find port in specific range
+porter find --range 8000-9000
+
+# Find 3 sequential available ports
+porter find --count 3 --sequential</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hosts Management Commands -->
+                    <div class="command-group" data-category="hosts">
+                        <h3 class="command-group-title">🗺️ Hosts File Management</h3>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter hosts list</div>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Display all custom hosts file entries. Shows your local DNS mappings.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter hosts list [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--filter, -f</span>
+                                    <span class="option-desc">Filter entries by hostname or IP</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--custom-only</span>
+                                    <span class="option-desc">Show only custom entries (exclude system)</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># List all hosts entries
+porter hosts list
+
+# Show only .local domains
+porter hosts list --filter .local
+
+# Show custom entries only
+porter hosts list --custom-only</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter hosts add</div>
+                                    <span class="badge badge-required">Requires Elevated Permissions</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Add a new hosts file entry. Maps a hostname to an IP address for local development.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter hosts add &lt;HOSTNAME&gt; &lt;IP&gt; [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--comment, -c</span>
+                                    <span class="option-desc">Add a comment to the entry</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--force, -f</span>
+                                    <span class="option-desc">Overwrite existing entry</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Add a local development domain
+porter hosts add myapp.local 127.0.0.1
+
+# Add with comment
+porter hosts add api.dev 127.0.0.1 --comment "Local API server"
+
+# Update existing entry
+porter hosts add staging.local 192.168.1.100 --force</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter hosts remove</div>
+                                    <span class="badge badge-required">Requires Elevated Permissions</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Remove a hosts file entry by hostname.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter hosts remove &lt;HOSTNAME&gt; [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--yes, -y</span>
+                                    <span class="option-desc">Skip confirmation prompt</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Remove a hosts entry
+porter hosts remove myapp.local
+
+# Remove without confirmation
+porter hosts remove api.dev --yes</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter hosts backup</div>
+                                    <span class="badge badge-optional">Optional</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Create a backup of your hosts file. Always a good idea before making changes!
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter hosts backup [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--path, -p</span>
+                                    <span class="option-desc">Custom backup location</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Create backup with timestamp
+porter hosts backup
+
+# Backup to specific location
+porter hosts backup --path ~/backups/hosts.backup</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitor & Service Commands -->
+                    <div class="command-group" data-category="monitor">
+                        <h3 class="command-group-title">📊 Monitoring & Services</h3>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter watch</div>
+                                    <span class="badge badge-new">New</span>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Monitor port activity in real-time. Watch your harbor and see ships come and go.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter watch [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--range, -r</span>
+                                    <span class="option-desc">Port range to monitor</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--interval, -i</span>
+                                    <span class="option-desc">Refresh interval in seconds (default: 2)</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--alert</span>
+                                    <span class="option-desc">Alert on new port usage</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Watch all ports
+porter watch
+
+# Monitor development port range
+porter watch --range 3000-8080 --interval 1
+
+# Get alerts on changes
+porter watch --alert</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter status</div>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Get a comprehensive overview of your development environment status.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter status [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--services</span>
+                                    <span class="option-desc">Show common service status (DB, Redis, etc.)</span>
+                                </div>
+                                <div class="option">
+                                    <span class="option-name">--health</span>
+                                    <span class="option-desc">Perform health checks on services</span>
+                                </div>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># Get overall status
+porter status
+
+# Check service health
+porter status --services --health</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Utility Commands -->
+                    <div class="command-group" data-category="utility">
+                        <h3 class="command-group-title">🔧 Utility Commands</h3>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter version</div>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Display Porter version information and check for updates.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter version [OPTIONS]</code>
+                            </div>
+                            <div class="command-options">
+                                <h5>Options:</h5>
+                                <div class="option">
+                                    <span class="option-name">--check-update</span>
+                                    <span class="option-desc">Check for available updates</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="command-item">
+                            <div class="command-header">
+                                <div>
+                                    <div class="command-name">porter help</div>
+                                </div>
+                            </div>
+                            <p class="command-description">
+                                Display help information for Porter or specific commands.
+                            </p>
+                            <div class="command-syntax">
+                                <code>porter help [COMMAND]</code>
+                            </div>
+                            <div class="example">
+                                <p class="example-title">Examples:</p>
+                                <div class="code-block">
+                                    <pre><code># General help
+porter help
+
+# Command-specific help
+porter help kill
+porter help hosts add</code></pre>
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Common Workflows -->
+                <section id="workflows" class="section">
+                    <h2>🚀 Common Workflows</h2>
+
+                    <div class="card">
+                        <h3>Workflow 1: Starting a New Development Project</h3>
+                        <p>When starting a new project, you want to ensure your ports are clear and ready.</p>
+                        <div class="code-block">
+                            <pre><code># 1. Check if your preferred port is available
+porter check 3000
+
+# 2. If occupied, see what's using it
+porter list --filter 3000
+
+# 3. Kill the old process if needed
+porter kill 3000
+
+# 4. Add a custom hosts entry for your project
+sudo porter hosts add myproject.local 127.0.0.1 --comment "My awesome project"
+
+# 5. Start your development server
+npm run dev</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Workflow 2: Cleaning Up Stuck Ports</h3>
+                        <p>When processes don't shut down cleanly and occupy ports.</p>
+                        <div class="code-block">
+                            <pre><code># 1. List all active ports in dev range
+porter list --range 3000-9000
+
+# 2. Identify stuck processes
+porter check 8080
+
+# 3. Kill the stuck process
+porter kill 8080 --force
+
+# 4. Verify the port is now free
+porter check 8080</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Workflow 3: Setting Up Multiple Services</h3>
+                        <p>When you need to run frontend, backend, and database simultaneously.</p>
+                        <div class="code-block">
+                            <pre><code># 1. Find three available sequential ports
+porter find --count 3 --sequential
+
+# 2. Check the status of common service ports
+porter status --services
+
+# 3. Add hosts entries for each service
+sudo porter hosts add frontend.local 127.0.0.1
+sudo porter hosts add api.local 127.0.0.1
+sudo porter hosts add db.local 127.0.0.1
+
+# 4. Monitor all services
+porter watch --range 3000-5432 --alert</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Workflow 4: Daily Development Routine</h3>
+                        <p>Your daily checklist before starting work.</p>
+                        <div class="code-block">
+                            <pre><code># 1. Get overall environment status
+porter status --health
+
+# 2. List active development ports
+porter list --range 3000-9000
+
+# 3. Check hosts file entries
+porter hosts list --custom-only
+
+# 4. Clean up any orphaned processes
+porter list --filter node
+# Review and kill as needed
+
+# 5. Start your watch to monitor activity
+porter watch --range 3000-8080</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Advanced Topics -->
+                <section id="advanced" class="section">
+                    <h2>🎓 Advanced Topics</h2>
+
+                    <div class="card">
+                        <h3>Automation with Porter</h3>
+                        <p>Integrate Porter into your shell scripts and automation workflows.</p>
+
+                        <h4>Shell Script Example</h4>
+                        <div class="code-block">
+                            <pre><code>#!/bin/bash
+# setup-dev-env.sh - Automated development environment setup
+
+set -e
+
+# Function to ensure port is available
+ensure_port_free() {
+    local port=$1
+    if porter check $port | grep -q "in use"; then
+        echo "Port $port is occupied. Cleaning up..."
+        porter kill $port --yes
+        sleep 1
+    fi
+}
+
+# Setup ports
+ensure_port_free 3000
+ensure_port_free 5000
+ensure_port_free 5432
+
+# Add hosts entries
+sudo porter hosts add myapp.local 127.0.0.1 --force
+sudo porter hosts add api.myapp.local 127.0.0.1 --force
+
+# Start services
+echo "Starting frontend on port 3000..."
+cd frontend && npm run dev &
+
+echo "Starting backend on port 5000..."
+cd ../backend && npm run dev &
+
+# Monitor services
+porter watch --range 3000-5432</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>JSON Output for Programmatic Use</h3>
+                        <p>Use Porter's JSON output mode for integration with other tools.</p>
+                        <div class="code-block">
+                            <pre><code># Get JSON output
+porter list --json --range 3000-9000
+
+# Example output:
+{
+  "ports": [
+    {
+      "port": 3000,
+      "process": {
+        "pid": 12345,
+        "name": "node",
+        "command": "npm run dev",
+        "user": "developer"
+      },
+      "state": "in_use"
+    }
+  ]
+}
+
+# Use with jq for filtering
+porter list --json | jq '.ports[] | select(.port == 3000)'
+
+# Count active ports
+porter list --json | jq '.ports | length'</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Configuration File</h3>
+                        <p>Porter can read settings from a configuration file: <code>~/.porter/config.yaml</code></p>
+                        <div class="code-block">
+                            <pre><code># ~/.porter/config.yaml
+defaults:
+  # Default port range for operations
+  port_range: "3000-9000"
+
+  # Default watch interval (seconds)
+  watch_interval: 2
+
+  # Enable alerts by default
+  enable_alerts: true
+
+# Custom port labels
+labels:
+  3000: "Frontend Dev Server"
+  5000: "Backend API"
+  5432: "PostgreSQL"
+  6379: "Redis Cache"
+  8080: "Proxy Server"
+
+# Service health check endpoints
+health_checks:
+  - name: "Frontend"
+    port: 3000
+    path: "/health"
+  - name: "API"
+    port: 5000
+    path: "/api/health"
+
+# Hosts file management
+hosts:
+  # Automatically backup before changes
+  auto_backup: true
+
+  # Backup directory
+  backup_dir: "~/.porter/backups"</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Environment Variables</h3>
+                        <p>Control Porter behavior through environment variables.</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Description</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>PORTER_CONFIG</code></td>
+                                    <td>Path to config file</td>
+                                    <td><code>~/.porter/config.yaml</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>PORTER_PORT_RANGE</code></td>
+                                    <td>Default port range</td>
+                                    <td><code>3000-9000</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>PORTER_NO_COLOR</code></td>
+                                    <td>Disable colored output</td>
+                                    <td><code>false</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>PORTER_LOG_LEVEL</code></td>
+                                    <td>Logging verbosity</td>
+                                    <td><code>info</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Troubleshooting -->
+                <section id="troubleshooting" class="section">
+                    <h2>🔍 Troubleshooting</h2>
+
+                    <div class="card">
+                        <h3>Common Issues and Solutions</h3>
+
+                        <h4>Issue: "Permission denied" when killing processes</h4>
+                        <p><strong>Solution:</strong></p>
+                        <div class="code-block">
+                            <pre><code># Use sudo for elevated permissions
+sudo porter kill 3000
+
+# Or if you own the process
+porter kill 3000 --force</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+
+                        <h4>Issue: Can't modify hosts file</h4>
+                        <p><strong>Solution:</strong></p>
+                        <div class="code-block">
+                            <pre><code># Hosts file operations require sudo
+sudo porter hosts add myapp.local 127.0.0.1
+
+# Check hosts file permissions
+ls -la /etc/hosts
+
+# Backup hosts file first
+sudo porter hosts backup</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+
+                        <h4>Issue: Port appears available but can't bind</h4>
+                        <p><strong>Solution:</strong></p>
+                        <div class="code-block">
+                            <pre><code># Check with verbose output
+porter check 3000 --verbose
+
+# Look for TIME_WAIT connections
+netstat -an | grep 3000
+
+# Wait for port to fully release
+porter check 3000 --wait --timeout 60</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+
+                        <h4>Issue: Porter command not found</h4>
+                        <p><strong>Solution:</strong></p>
+                        <div class="code-block">
+                            <pre><code># Verify installation
+which porter
+
+# Check GOPATH is in PATH
+echo $PATH
+
+# Reinstall if needed
+go install github.com/yourusername/porter@latest
+
+# Or add GOPATH/bin to PATH
+export PATH=$PATH:$(go env GOPATH)/bin</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>💡 Debug Mode:</strong>
+                        Run Porter with <code>PORTER_LOG_LEVEL=debug</code> for detailed troubleshooting information:
+                        <div class="code-block">
+                            <pre><code>PORTER_LOG_LEVEL=debug porter list</code></pre>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- FAQ -->
+                <section id="faq" class="section">
+                    <h2>❓ Frequently Asked Questions</h2>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            Is Porter safe to use in production?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Porter is designed primarily for local development environments. While it's safe to use,
+                                production environments typically have more sophisticated monitoring and process management
+                                solutions (like Kubernetes, systemd, or Docker Swarm) that are better suited for that purpose.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            How does Porter compare to lsof or netstat?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Porter is built on top of system tools like lsof and netstat but provides a more
+                                developer-friendly interface with additional features like hosts file management,
+                                service monitoring, and workflow automation. Think of it as a specialized tool that
+                                makes common development tasks easier.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            Can I use Porter on Windows?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Yes! Porter works on Windows, macOS, and Linux. On Windows, some commands may require
+                                running your terminal as Administrator (similar to using sudo on Unix systems).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            Does Porter affect system performance?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Porter has minimal performance impact. Most commands execute quickly and don't run in
+                                the background. The <code>porter watch</code> command does run continuously but uses
+                                minimal resources (similar to running <code>top</code> or <code>htop</code>).
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            Can I extend Porter with custom commands?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                While Porter doesn't have a plugin system yet, you can easily integrate it into shell
+                                scripts and create wrapper functions in your shell profile. Check the
+                                <a href="#advanced">Advanced Topics</a> section for examples.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            What happens if I accidentally kill an important system process?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Porter shows you process information before killing and asks for confirmation (unless
+                                you use <code>--yes</code>). System critical processes usually require elevated
+                                permissions to kill. However, always double-check what you're killing - it's good to
+                                run <code>porter check &lt;port&gt;</code> first to see what process is using it.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="collapsible" onclick="toggleCollapse(this)">
+                            How do I update Porter?
+                        </h3>
+                        <div class="collapsible-content">
+                            <p>
+                                Update Porter using the same method you used to install it:
+                            </p>
+                            <div class="code-block">
+                                <pre><code># Via go install
+go install github.com/yourusername/porter@latest
+
+# Check your version
+porter version --check-update</code></pre>
+                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Reference -->
+                <section id="quick-reference" class="section">
+                    <h2>📚 Quick Reference</h2>
+
+                    <div class="card">
+                        <h3>Essential Commands Cheat Sheet</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Command</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Set base domain</td>
+                                    <td><code>porter set base localhost</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Map subdomain to port</td>
+                                    <td><code>sudo porter map api 3000</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Remove mapping</td>
+                                    <td><code>sudo porter unmap api</code></td>
+                                </tr>
+                                <tr>
+                                    <td>List all mappings</td>
+                                    <td><code>porter list</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Open in browser</td>
+                                    <td><code>porter open api</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Show command tree</td>
+                                    <td><code>porter tree</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Open documentation</td>
+                                    <td><code>porter docs</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Reset configuration</td>
+                                    <td><code>porter reset --yes</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Get help</td>
+                                    <td><code>porter --help</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <h3>Example Mappings</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Command</th>
+                                    <th>Result URL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Frontend App</td>
+                                    <td><code>sudo porter map app 3000</code></td>
+                                    <td>http://app.localhost:3000</td>
+                                </tr>
+                                <tr>
+                                    <td>Backend API</td>
+                                    <td><code>sudo porter map api 8080</code></td>
+                                    <td>http://api.localhost:8080</td>
+                                </tr>
+                                <tr>
+                                    <td>Admin Panel</td>
+                                    <td><code>sudo porter map admin 4000</code></td>
+                                    <td>http://admin.localhost:4000</td>
+                                </tr>
+                                <tr>
+                                    <td>Database UI</td>
+                                    <td><code>sudo porter map db 5432</code></td>
+                                    <td>http://db.localhost:5432</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="margin-top: 1rem; font-style: italic; color: #6c757d;">
+                            💡 <strong>Note:</strong> On macOS/Linux, use <code>sudo</code> for map/unmap commands.
+                            On Windows, run terminal as Administrator.
+                        </p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>
+                <strong>⚓ Porter</strong> - The Port Authority for Your Development Environment
+            </p>
+            <p style="opacity: 0.8; margin-top: 0.5rem;">
+                Navigate your localhost waters with confidence
+            </p>
+            <div class="footer-links">
+                <a href="https://github.com/yourusername/porter">GitHub</a>
+                <a href="https://github.com/yourusername/porter/issues">Report an Issue</a>
+                <a href="#getting-started">Documentation</a>
+                <a href="#faq">FAQ</a>
+            </div>
+            <p style="margin-top: 2rem; opacity: 0.6; font-size: 0.9rem;">
+                Made with 🌊 for developers who love clean harbors
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('porter-theme', newTheme);
+
+            const icon = document.getElementById('theme-icon');
+            icon.textContent = newTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+        }
+
+        // Load saved theme preference
+        (function() {
+            const savedTheme = localStorage.getItem('porter-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.textContent = savedTheme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+            }
+        })();
+
+        // Copy Code to Clipboard
+        function copyCode(button) {
+            const codeBlock = button.parentElement.querySelector('pre code');
+            const text = codeBlock.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+
+        // Command Search/Filter
+        function filterCommands() {
+            const searchTerm = document.getElementById('commandSearch').value.toLowerCase();
+            const commandItems = document.querySelectorAll('.command-item');
+            const commandGroups = document.querySelectorAll('.command-group');
+
+            commandItems.forEach(item => {
+                const commandName = item.querySelector('.command-name').textContent.toLowerCase();
+                const commandDesc = item.querySelector('.command-description').textContent.toLowerCase();
+                const matchesSearch = commandName.includes(searchTerm) || commandDesc.includes(searchTerm);
+
+                item.style.display = matchesSearch ? 'block' : 'none';
+            });
+
+            // Hide groups with no visible commands
+            commandGroups.forEach(group => {
+                const visibleCommands = group.querySelectorAll('.command-item[style="display: block"], .command-item:not([style])');
+                const hasVisibleCommands = Array.from(visibleCommands).some(cmd => {
+                    const style = window.getComputedStyle(cmd);
+                    return style.display !== 'none';
+                });
+                group.style.display = hasVisibleCommands || searchTerm === '' ? 'block' : 'none';
+            });
+        }
+
+        // Collapsible Sections
+        function toggleCollapse(element) {
+            element.classList.toggle('collapsed');
+            const content = element.nextElementSibling;
+            if (content && content.classList.contains('collapsible-content')) {
+                content.classList.toggle('collapsed');
+            }
+        }
+
+        // Smooth Scroll with Offset (to account for sticky header)
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    const headerOffset = 100;
+                    const elementPosition = target.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Active Sidebar Link
+        function updateActiveSidebarLink() {
+            const sections = document.querySelectorAll('.section');
+            const sidebarLinks = document.querySelectorAll('.sidebar-nav a');
+
+            let currentSection = '';
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (window.pageYOffset >= sectionTop - 200) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+
+            sidebarLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${currentSection}`) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveSidebarLink);
+        window.addEventListener('load', updateActiveSidebarLink);
+
+        // Add fade-in animation to sections on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('fade-in');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + K to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                const searchBox = document.getElementById('commandSearch');
+                if (searchBox) {
+                    searchBox.focus();
+                    searchBox.select();
+                }
+            }
+
+            // Escape to clear search
+            if (e.key === 'Escape') {
+                const searchBox = document.getElementById('commandSearch');
+                if (searchBox && document.activeElement === searchBox) {
+                    searchBox.value = '';
+                    filterCommands();
+                    searchBox.blur();
+                }
+            }
+        });
+
+        // Print-friendly: expand all collapsible sections before print
+        window.addEventListener('beforeprint', () => {
+            document.querySelectorAll('.collapsible.collapsed').forEach(el => {
+                el.classList.remove('collapsed');
+            });
+            document.querySelectorAll('.collapsible-content.collapsed').forEach(el => {
+                el.classList.remove('collapsed');
+            });
+        });
+
+        console.log('⚓ Porter Documentation Loaded - Navigate with confidence!');
+    </script>
+</body>
+</html>
