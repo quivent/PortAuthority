@@ -1,0 +1,125 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:7847",
+    "distDir": "../dist",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "Subway Authority",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "createDir": true,
+        "removeFile": false,
+        "removeDir": false,
+        "scope": [
+          "$HOME/.subway-authority/**",
+          "$HOME/.config/subway-authority/**"
+        ]
+      },
+      "shell": {
+        "all": false,
+        "execute": false,
+        "open": true,
+        "scope": [
+          {
+            "name": "open-url",
+            "cmd": "open",
+            "args": true
+          }
+        ]
+      },
+      "notification": {
+        "all": true
+      },
+      "window": {
+        "all": false,
+        "show": true,
+        "hide": true,
+        "close": true,
+        "center": true,
+        "setFocus": true,
+        "setTitle": true
+      },
+      "protocol": {
+        "all": false,
+        "asset": true,
+        "assetScope": [
+          "$RESOURCE/**"
+        ]
+      }
+    },
+    "systemTray": {
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false,
+      "title": "Subway Authority"
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "Copyright © 2024. All rights reserved.",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "com.portauthority.subway",
+      "longDescription": "NYC Port Authority themed desktop application for managing subdomain-to-localhost port mappings with MTA-style notifications and character system.",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null,
+        "minimumSystemVersion": "10.13"
+      },
+      "resources": [],
+      "shortDescription": "Port management with NYC Transit theme",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost; style-src 'unsafe-inline' 'self'"
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "title": "Subway Authority",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "center": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "fileDropEnabled": false,
+        "visible": true,
+        "skipTaskbar": false
+      }
+    ]
+  }
+}

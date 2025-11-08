@@ -1,0 +1,116 @@
+/**
+ * Station Component Styles
+ * Interactive port stations with hover effects
+ */
+
+.station {
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.station:hover .station-circle {
+  filter: brightness(1.2);
+  stroke-width: 3;
+}
+
+.station-selected .station-circle {
+  filter: brightness(1.3) drop-shadow(0 0 10px currentColor);
+}
+
+.station-circle {
+  transition: all var(--transition-fast);
+}
+
+.station-activity-ring {
+  pointer-events: none;
+}
+
+.station-label {
+  font-family: var(--font-primary);
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8),
+               0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+.station-port-number {
+  font-family: var(--font-mono);
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.station-passengers {
+  font-family: var(--font-mono);
+  pointer-events: none;
+  user-select: none;
+}
+
+.station-tooltip {
+  pointer-events: none;
+  opacity: 0;
+  animation: tooltipFadeIn var(--transition-base) forwards;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.station-warning {
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+/* Hover States */
+.station:hover .station-label {
+  font-weight: 700;
+}
+
+.station:hover .station-tooltip {
+  opacity: 1;
+}
+
+/* Selected State */
+.station-selected {
+  filter: drop-shadow(0 0 15px rgba(0, 57, 166, 0.5));
+}
+
+/* Health Status Colors */
+.station[data-health="healthy"] .station-circle {
+  fill: var(--status-healthy);
+}
+
+.station[data-health="degraded"] .station-circle {
+  fill: var(--status-warning);
+}
+
+.station[data-health="unhealthy"] .station-circle {
+  fill: var(--status-error);
+}
+
+.station[data-health="unknown"] .station-circle {
+  fill: var(--pa-grey-400);
+}
+
+/* Accessibility */
+.station:focus {
+  outline: none;
+}
+
+.station:focus .station-circle {
+  stroke: var(--pa-blue-primary);
+  stroke-width: 4;
+}
+
+/* Performance */
+.station {
+  will-change: transform, filter;
+}

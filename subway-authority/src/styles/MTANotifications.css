@@ -1,0 +1,337 @@
+/* MTA-Style Notification Styling */
+/* NYC Transit Authority themed notifications */
+
+:root {
+  /* NYC MTA Color Palette */
+  --mta-blue: #0039A6;
+  --mta-red: #EE352E;
+  --mta-green: #00933C;
+  --mta-orange: #FF6319;
+  --mta-yellow: #FCCC02;
+  --mta-gray: #333333;
+  --mta-white: #FFFFFF;
+
+  /* Notification Dimensions */
+  --notification-width: 380px;
+  --notification-padding: 16px;
+  --notification-border-radius: 8px;
+  --notification-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+  /* Animation Timings */
+  --notification-slide-duration: 0.3s;
+  --notification-fade-duration: 0.2s;
+}
+
+/* Notification Container */
+.mta-notification-container {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: var(--notification-width);
+  padding: 16px;
+}
+
+.mta-notification-container.top-right {
+  top: 0;
+  right: 0;
+}
+
+.mta-notification-container.top-left {
+  top: 0;
+  left: 0;
+}
+
+.mta-notification-container.bottom-right {
+  bottom: 0;
+  right: 0;
+}
+
+.mta-notification-container.bottom-left {
+  bottom: 0;
+  left: 0;
+}
+
+/* Notification Card */
+.mta-notification {
+  width: var(--notification-width);
+  padding: var(--notification-padding);
+  border-radius: var(--notification-border-radius);
+  box-shadow: var(--notification-shadow);
+  pointer-events: auto;
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  transition: transform var(--notification-slide-duration) cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity var(--notification-fade-duration) ease-out;
+  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  border-left: 4px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Entrance Animation */
+.mta-notification.visible {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Exit Animation */
+.mta-notification.exiting {
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  transition: transform var(--notification-slide-duration) cubic-bezier(0.55, 0.055, 0.675, 0.19),
+              opacity var(--notification-fade-duration) ease-in;
+}
+
+/* Left-side animations */
+.mta-notification-container.top-left .mta-notification,
+.mta-notification-container.bottom-left .mta-notification {
+  transform: translateX(calc(-100% - 32px));
+}
+
+.mta-notification-container.top-left .mta-notification.visible,
+.mta-notification-container.bottom-left .mta-notification.visible {
+  transform: translateX(0);
+}
+
+.mta-notification-container.top-left .mta-notification.exiting,
+.mta-notification-container.bottom-left .mta-notification.exiting {
+  transform: translateX(calc(-100% - 32px));
+}
+
+/* Header */
+.mta-notification-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mta-notification-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.mta-notification-title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.mta-notification-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mta-notification-close:hover {
+  opacity: 1;
+}
+
+.mta-notification-close:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Body */
+.mta-notification-body {
+  margin-bottom: 12px;
+}
+
+.mta-notification-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: inherit;
+}
+
+/* Service Line Info */
+.mta-notification-service-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mta-train-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mta-service-name {
+  flex: 1;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Action Buttons */
+.mta-notification-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.mta-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--mta-gray);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mta-action-button:hover {
+  background: var(--mta-white);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mta-action-button:active {
+  transform: translateY(0);
+}
+
+.mta-action-button:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.mta-action-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Footer */
+.mta-notification-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.mta-notification-time {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Type-Specific Styling */
+
+/* Service Alert (Orange) */
+.mta-notification[data-type="service_alert"] {
+  border-left-color: var(--mta-orange);
+}
+
+/* Planned Work (Yellow) */
+.mta-notification[data-type="planned_work"] {
+  border-left-color: var(--mta-yellow);
+}
+
+/* Good Service (Green) */
+.mta-notification[data-type="good_service"] {
+  border-left-color: var(--mta-green);
+}
+
+/* Service Change (Blue) */
+.mta-notification[data-type="service_change"] {
+  border-left-color: var(--mta-blue);
+}
+
+/* Emergency (Red) */
+.mta-notification[data-type="emergency"] {
+  border-left-color: var(--mta-red);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .mta-notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .mta-action-button {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--mta-white);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .mta-action-button:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .mta-notification-service-line {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .mta-notification {
+    transition: opacity var(--notification-fade-duration) ease-out;
+    transform: none !important;
+  }
+
+  .mta-notification.visible {
+    opacity: 1;
+  }
+
+  .mta-notification.exiting {
+    opacity: 0;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .mta-notification {
+    border: 2px solid currentColor;
+  }
+
+  .mta-action-button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  :root {
+    --notification-width: calc(100vw - 32px);
+  }
+
+  .mta-notification-container {
+    padding: 8px;
+  }
+
+  .mta-notification {
+    max-width: 100%;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .mta-notification-container {
+    display: none;
+  }
+}
