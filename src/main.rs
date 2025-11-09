@@ -1,10 +1,13 @@
+mod apps;
 mod browser;
 mod config;
+mod daemon;
 mod error;
 mod hosts;
 mod nginx;
 mod output;
 mod ports;
+mod process;
 
 use clap::{Parser, Subcommand};
 use config::Config;
@@ -105,6 +108,18 @@ enum Commands {
         #[command(subcommand)]
         authority_command: AuthorityCommands,
     },
+
+    /// Manage daemon-controlled apps
+    App {
+        #[command(subcommand)]
+        app_command: AppCommands,
+    },
+
+    /// Manage the daemon process
+    Daemon {
+        #[command(subcommand)]
+        daemon_command: DaemonCommands,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -167,6 +182,120 @@ enum SetCommands {
         /// The base domain (e.g., "localhost")
         domain: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum AppCommands {
+    /// Add a new app to the daemon
+    Add {
+        /// Unique app name
+        name: String,
+
+        /// Command to execute
+        #[arg(long)]
+        command: String,
+
+        /// Port for health checks
+        #[arg(long)]
+        port: u16,
+
+        /// Working directory
+        #[arg(long)]
+        dir: String,
+
+        /// Environment variables (KEY=VALUE)
+        #[arg(long = "env", value_parser = parse_env)]
+        env: Vec<(String, String)>,
+
+        /// Disable auto-restart
+        #[arg(long)]
+        no_auto_restart: bool,
+
+        /// Maximum restart attempts
+        #[arg(long, default_value = "5")]
+        max_restarts: u32,
+
+        /// Health check interval in seconds
+        #[arg(long, default_value = "30")]
+        health_interval: u64,
+
+        /// HTTP health check path (e.g., /health)
+        #[arg(long)]
+        health_path: Option<String>,
+    },
+
+    /// Remove an app from the daemon
+    Remove {
+        /// App name to remove
+        name: String,
+
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        yes: bool,
+    },
+
+    /// List all managed apps
+    List {
+        /// Include live status information
+        #[arg(long)]
+        status: bool,
+    },
+
+    /// View app logs
+    Logs {
+        /// App name
+        name: String,
+
+        /// Follow log output
+        #[arg(short, long)]
+        follow: bool,
+
+        /// Number of lines to show
+        #[arg(short = 'n', long, default_value = "100")]
+        lines: usize,
+
+        /// Show stderr instead of stdout
+        #[arg(long)]
+        stderr: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum DaemonCommands {
+    /// Start the daemon
+    Start {
+        /// Run in foreground (don't detach)
+        #[arg(long)]
+        foreground: bool,
+    },
+
+    /// Stop the daemon
+    Stop {
+        /// Force stop (send SIGKILL)
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Show daemon status
+    Status {
+        /// Show detailed information
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Restart the daemon
+    Restart,
+}
+
+/// Parse environment variable in KEY=VALUE format
+fn parse_env(s: &str) -> Result<(String, String)> {
+    let parts: Vec<&str> = s.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        return Err(PorterError::InvalidInput(
+            "Environment variable must be in KEY=VALUE format".into(),
+        ));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
 }
 
 fn get_styles() -> clap::builder::Styles {
@@ -242,6 +371,8 @@ fn execute_command(command: Commands) -> Result<()> {
         Commands::Reset { yes } => handle_reset(yes),
         Commands::Ports => handle_ports(),
         Commands::Authority { authority_command } => execute_authority_command(authority_command),
+        Commands::App { app_command } => execute_app_command(app_command),
+        Commands::Daemon { daemon_command } => execute_daemon_command(daemon_command),
     }
 }
 
@@ -865,6 +996,277 @@ fn handle_reset(skip_confirmation: bool) -> Result<()> {
 
     output::print_success("All configuration cleared");
     Ok(())
+}
+
+// ============================================================================
+// App Management Command Handlers
+// ============================================================================
+
+fn execute_app_command(command: AppCommands) -> Result<()> {
+    // App commands require tokio runtime
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| PorterError::Daemon(format!("Failed to create runtime: {}", e)))?;
+
+    runtime.block_on(async {
+        match command {
+            AppCommands::Add {
+                name,
+                command,
+                port,
+                dir,
+                env,
+                no_auto_restart,
+                max_restarts,
+                health_interval,
+                health_path,
+            } => {
+                handle_app_add(
+                    name,
+                    command,
+                    port,
+                    dir,
+                    env,
+                    !no_auto_restart,
+                    max_restarts,
+                    health_interval,
+                    health_path,
+                )
+                .await
+            }
+            AppCommands::Remove { name, yes } => handle_app_remove(name, yes).await,
+            AppCommands::List { status } => handle_app_list(status).await,
+            AppCommands::Logs {
+                name,
+                follow,
+                lines,
+                stderr,
+            } => handle_app_logs(name, follow, lines, stderr).await,
+        }
+    })
+}
+
+async fn handle_app_add(
+    name: String,
+    command: String,
+    port: u16,
+    dir: String,
+    env: Vec<(String, String)>,
+    auto_restart: bool,
+    max_restarts: u32,
+    health_interval: u64,
+    health_path: Option<String>,
+) -> Result<()> {
+    use apps::AppConfig;
+
+    // Build app config
+    let mut app_config = AppConfig::new(name.clone(), command, dir, port)
+        .with_auto_restart(auto_restart)
+        .with_max_restarts(max_restarts)
+        .with_health_interval(health_interval);
+
+    // Add environment variables
+    for (key, value) in env {
+        app_config = app_config.with_env(key, value);
+    }
+
+    // Add health check path if provided
+    if let Some(path) = health_path {
+        app_config = app_config.with_health_path(path);
+    }
+
+    // Add to config and save
+    let mut config = Config::load()?;
+    config.add_app(app_config.clone())?;
+    config.save()?;
+
+    output::print_app_added(&name, &app_config);
+
+    // If daemon is running, signal it to start the app
+    // For now, just notify the user
+    output::print_info(&format!(
+        "App added. Start the daemon with 'port daemon start' to run it."
+    ));
+
+    Ok(())
+}
+
+async fn handle_app_remove(name: String, skip_confirmation: bool) -> Result<()> {
+    // Ask for confirmation unless --yes flag is provided
+    if !skip_confirmation {
+        output::print_warning(&format!("Remove app '{}'?", name));
+        println!("Type 'yes' to confirm:");
+
+        let mut input = String::new();
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut input).unwrap();
+
+        let answer = input.trim().to_lowercase();
+        if answer != "yes" {
+            output::print_info("Remove cancelled");
+            return Ok(());
+        }
+    }
+
+    // Remove from config
+    let mut config = Config::load()?;
+    config.remove_app(&name)?;
+    config.save()?;
+
+    output::print_success(&format!("Removed app: {}", name));
+
+    // If daemon is running, signal it to stop the app
+    // For now, just notify the user
+    output::print_info("Restart the daemon for changes to take effect");
+
+    Ok(())
+}
+
+async fn handle_app_list(include_status: bool) -> Result<()> {
+    let config = Config::load()?;
+
+    if config.apps.is_empty() {
+        output::print_info("No apps configured");
+        output::print_info("Add an app with: port app add <name> --command <cmd> --port <port> --dir <path>");
+        return Ok(());
+    }
+
+    if include_status {
+        // Get status from daemon if running
+        match daemon::daemon_status().await {
+            Ok(status) => {
+                output::print_app_list_with_status(&config.apps, &status.apps);
+            }
+            Err(_) => {
+                // Daemon not running, show apps without status
+                output::print_app_list(&config.apps);
+                output::print_warning("Daemon not running. Start with: port daemon start");
+            }
+        }
+    } else {
+        output::print_app_list(&config.apps);
+    }
+
+    Ok(())
+}
+
+async fn handle_app_logs(name: String, _follow: bool, lines: usize, _stderr: bool) -> Result<()> {
+    let config = Config::load()?;
+
+    // Check if app exists
+    config
+        .get_app(&name)
+        .ok_or_else(|| PorterError::AppNotFound(name.clone()))?;
+
+    // Read logs from file
+    let log_dir = Config::config_dir()?.join("logs").join(&name);
+    let log_file = log_dir.join("stdout.log");
+
+    if !log_file.exists() {
+        output::print_info(&format!("No logs found for app: {}", name));
+        return Ok(());
+    }
+
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+
+    let file = File::open(log_file)?;
+    let reader = BufReader::new(file);
+
+    let all_lines: Vec<String> = reader.lines().filter_map(|line| line.ok()).collect();
+
+    let start = all_lines.len().saturating_sub(lines);
+    for line in &all_lines[start..] {
+        println!("{}", line);
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Daemon Management Command Handlers
+// ============================================================================
+
+fn execute_daemon_command(command: DaemonCommands) -> Result<()> {
+    // Daemon commands require tokio runtime
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| PorterError::Daemon(format!("Failed to create runtime: {}", e)))?;
+
+    runtime.block_on(async {
+        match command {
+            DaemonCommands::Start { foreground } => handle_daemon_start(foreground).await,
+            DaemonCommands::Stop { force: _ } => handle_daemon_stop().await,
+            DaemonCommands::Status { verbose } => handle_daemon_status(verbose).await,
+            DaemonCommands::Restart => handle_daemon_restart().await,
+        }
+    })
+}
+
+async fn handle_daemon_start(foreground: bool) -> Result<()> {
+    output::print_info("Starting daemon...");
+
+    match daemon::start_daemon(foreground).await {
+        Ok(_) => {
+            if foreground {
+                output::print_success("Daemon stopped");
+            } else {
+                output::print_success("Daemon started in background");
+                output::print_info("Check status with: port daemon status");
+            }
+            Ok(())
+        }
+        Err(e) => {
+            output::print_error(&format!("Failed to start daemon: {}", e));
+            Err(e)
+        }
+    }
+}
+
+async fn handle_daemon_stop() -> Result<()> {
+    output::print_info("Stopping daemon...");
+
+    match daemon::stop_daemon() {
+        Ok(_) => {
+            output::print_success("Daemon stopped");
+            Ok(())
+        }
+        Err(e) => {
+            output::print_error(&format!("Failed to stop daemon: {}", e));
+            Err(e)
+        }
+    }
+}
+
+async fn handle_daemon_status(verbose: bool) -> Result<()> {
+    match daemon::daemon_status().await {
+        Ok(status) => {
+            output::print_daemon_status(&status, verbose);
+            Ok(())
+        }
+        Err(PorterError::DaemonNotRunning) => {
+            output::print_warning("Daemon is not running");
+            output::print_info("Start with: port daemon start");
+            Ok(())
+        }
+        Err(e) => {
+            output::print_error(&format!("Failed to get daemon status: {}", e));
+            Err(e)
+        }
+    }
+}
+
+async fn handle_daemon_restart() -> Result<()> {
+    output::print_info("Restarting daemon...");
+
+    match daemon::restart_daemon().await {
+        Ok(_) => {
+            output::print_success("Daemon restarted");
+            Ok(())
+        }
+        Err(e) => {
+            output::print_error(&format!("Failed to restart daemon: {}", e));
+            Err(e)
+        }
+    }
 }
 
 #[cfg(test)]
