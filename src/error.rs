@@ -24,6 +24,49 @@ pub enum PorterError {
     #[error("Proxy error: {0}")]
     Proxy(String),
 
+    // Daemon-related errors
+    #[error("Daemon error: {0}")]
+    Daemon(String),
+
+    #[error("Daemon already running (PID: {0})")]
+    DaemonAlreadyRunning(u32),
+
+    #[error("Daemon not running")]
+    DaemonNotRunning,
+
+    #[error("PID file error: {0}")]
+    PidFile(String),
+
+    // Process-related errors
+    #[error("Process error: {0}")]
+    Process(String),
+
+    #[error("Process spawn failed: {0}")]
+    ProcessSpawnFailed(String),
+
+    #[error("Health check failed: {0}")]
+    HealthCheckFailed(String),
+
+    #[error("Restart limit reached for app: {0}")]
+    RestartLimitReached(String),
+
+    // App registry errors
+    #[error("App registry error: {0}")]
+    AppRegistry(String),
+
+    #[error("App not found: {0}")]
+    AppNotFound(String),
+
+    #[error("Duplicate app name: {0}")]
+    DuplicateApp(String),
+
+    #[error("Invalid app configuration: {0}")]
+    InvalidAppConfig(String),
+
+    #[error("Port already in use: {0}")]
+    PortInUse(u16),
+
+    // Standard error conversions
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
