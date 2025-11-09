@@ -1,4 +1,5 @@
 /// Configuration management for porter CLI
+use crate::apps::AppConfig;
 use crate::error::{PorterError, Result};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,10 @@ pub struct Config {
     /// Map of subdomain to port (e.g., "api" -> 3000)
     #[serde(default)]
     pub mappings: HashMap<String, u16>,
+
+    /// App configurations for daemon management
+    #[serde(default)]
+    pub apps: Vec<AppConfig>,
 }
 
 impl Config {
@@ -93,6 +98,28 @@ impl Config {
             Self::validate_port(*port)?;
         }
 
+        // Validate app configurations
+        self.validate_apps()?;
+
+        Ok(())
+    }
+
+    /// Validate all app configurations
+    fn validate_apps(&self) -> Result<()> {
+        use crate::apps::AppRegistry;
+
+        for app in &self.apps {
+            AppRegistry::validate_config(app)?;
+        }
+
+        // Check for duplicate app names
+        let mut seen = std::collections::HashSet::new();
+        for app in &self.apps {
+            if !seen.insert(&app.name) {
+                return Err(PorterError::DuplicateApp(app.name.clone()));
+            }
+        }
+
         Ok(())
     }
 
@@ -134,6 +161,44 @@ impl Config {
     pub fn reset(&mut self) {
         self.base_domain = None;
         self.mappings.clear();
+        self.apps.clear();
+    }
+
+    /// Add an app to configuration
+    pub fn add_app(&mut self, app_config: AppConfig) -> Result<()> {
+        use crate::apps::AppRegistry;
+
+        // Validate
+        AppRegistry::validate_config(&app_config)?;
+
+        // Check for duplicates
+        if self.apps.iter().any(|a| a.name == app_config.name) {
+            return Err(PorterError::DuplicateApp(app_config.name));
+        }
+
+        self.apps.push(app_config);
+        Ok(())
+    }
+
+    /// Remove an app from configuration
+    pub fn remove_app(&mut self, name: &str) -> Result<AppConfig> {
+        let index = self
+            .apps
+            .iter()
+            .position(|a| a.name == name)
+            .ok_or_else(|| PorterError::AppNotFound(name.to_string()))?;
+
+        Ok(self.apps.remove(index))
+    }
+
+    /// Get app by name
+    pub fn get_app(&self, name: &str) -> Option<&AppConfig> {
+        self.apps.iter().find(|a| a.name == name)
+    }
+
+    /// Get mutable app by name
+    pub fn get_app_mut(&mut self, name: &str) -> Option<&mut AppConfig> {
+        self.apps.iter_mut().find(|a| a.name == name)
     }
 
     /// Get the full hostname for a subdomain

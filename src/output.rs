@@ -200,6 +200,116 @@ pub fn print_hosts_guidance(guidance: &str) {
     println!();
 }
 
+/// Print app added confirmation
+pub fn print_app_added(name: &str, config: &crate::apps::AppConfig) {
+    print_header("🏢 PORT AUTHORITY");
+    println!("\n{}{}App Added{}: {}{}{}{}", BOLD, BLUE, RESET, BOLD, WHITE, name, RESET);
+    println!("  {}▸{} {}Command:{} {}", BLUE, RESET, BLUE, WHITE, config.command);
+    println!("  {}▸{} {}Port:{} {}", BLUE, RESET, BLUE, WHITE, config.port);
+    println!("  {}▸{} {}Directory:{} {}", BLUE, RESET, BLUE, WHITE, config.directory);
+    println!("  {}▸{} {}Auto-restart:{} {}", BLUE, RESET, BLUE, WHITE, config.auto_restart);
+    println!("  {}▸{} {}Max restarts:{} {}", BLUE, RESET, BLUE, WHITE, config.max_restarts);
+    println!();
+}
+
+/// Print list of apps
+pub fn print_app_list(apps: &[crate::apps::AppConfig]) {
+    print_header("🏢 PORT AUTHORITY");
+    println!("\n{}{}Configured Apps:{} {}({} total){}", BOLD, BLUE, RESET, WHITE, apps.len(), RESET);
+    println!("  ╔═══════════════════════════════════════════════════════╗");
+
+    for app in apps {
+        println!("  ║ {}{}{}{:<20}{} {}→{} {}{:<10}{}",
+            BOLD, WHITE, app.name, "", RESET,
+            BLUE, RESET,
+            WHITE, format!(":{}", app.port), RESET
+        );
+        println!("  ║   {}▸{} {}", BLUE, RESET, app.command);
+    }
+
+    println!("  ╚═══════════════════════════════════════════════════════╝");
+    println!();
+}
+
+/// Print list of apps with status
+pub fn print_app_list_with_status(
+    apps: &[crate::apps::AppConfig],
+    statuses: &[crate::process::ProcessStatus],
+) {
+    use std::collections::HashMap;
+
+    print_header("🏢 PORT AUTHORITY");
+    println!("\n{}{}Managed Apps:{} {}({} total){}", BOLD, BLUE, RESET, WHITE, apps.len(), RESET);
+    println!("  ╔═══════════════════════════════════════════════════════╗");
+
+    // Create status map
+    let status_map: HashMap<_, _> = statuses.iter()
+        .map(|s| (s.name.as_str(), s))
+        .collect();
+
+    for app in apps {
+        let status_indicator = if let Some(status) = status_map.get(app.name.as_str()) {
+            match status.state {
+                crate::process::ProcessState::Running => format!("{}●{} Running", BLUE, RESET),
+                crate::process::ProcessState::Stopped => format!("{}●{} Stopped", RED, RESET),
+                crate::process::ProcessState::Starting => format!("{}⟳{} Starting", BLUE, RESET),
+                crate::process::ProcessState::Restarting => format!("{}⟳{} Restarting", BLUE, RESET),
+                crate::process::ProcessState::Unhealthy => format!("{}●{} Unhealthy", RED, RESET),
+                crate::process::ProcessState::Failed => format!("{}✗{} Failed", RED, RESET),
+            }
+        } else {
+            format!("{}●{} Unknown", WHITE, RESET)
+        };
+
+        println!("  ║ {}{}{:<20}{} {} {}:{}",
+            BOLD, WHITE, app.name, RESET,
+            status_indicator,
+            WHITE, app.port
+        );
+    }
+
+    println!("  ╚═══════════════════════════════════════════════════════╝");
+    println!();
+}
+
+/// Print daemon status
+pub fn print_daemon_status(status: &crate::daemon::DaemonStatus, verbose: bool) {
+    print_header("🏢 PORT AUTHORITY");
+
+    println!("\n{}{}Daemon Status{}", BOLD, BLUE, RESET);
+    println!("  {}▸{} {}PID:{} {}", BLUE, RESET, BLUE, WHITE, status.pid);
+    println!("  {}▸{} {}Uptime:{} {:.0}s", BLUE, RESET, BLUE, WHITE, status.uptime.as_secs());
+    println!("  {}▸{} {}Apps:{} {}", BLUE, RESET, BLUE, WHITE, status.apps.len());
+    println!("  {}▸{} {}Total Restarts:{} {}", BLUE, RESET, BLUE, WHITE, status.total_restarts);
+
+    if verbose && !status.apps.is_empty() {
+        println!("\n{}{}App Details:{}", BOLD, BLUE, RESET);
+        for app in &status.apps {
+            let state_str = match app.state {
+                crate::process::ProcessState::Running => format!("{}Running{}", BLUE, RESET),
+                crate::process::ProcessState::Stopped => format!("{}Stopped{}", RED, RESET),
+                crate::process::ProcessState::Starting => format!("{}Starting{}", BLUE, RESET),
+                crate::process::ProcessState::Restarting => format!("{}Restarting{}", BLUE, RESET),
+                crate::process::ProcessState::Unhealthy => format!("{}Unhealthy{}", RED, RESET),
+                crate::process::ProcessState::Failed => format!("{}Failed{}", RED, RESET),
+            };
+
+            println!("  {}▸{} {}{}{} - {}",
+                BLUE, RESET,
+                BOLD, app.name, RESET,
+                state_str
+            );
+
+            if let Some(pid) = app.pid {
+                println!("    {}PID:{} {}", BLUE, WHITE, pid);
+            }
+            println!("    {}Restarts:{} {}", BLUE, WHITE, app.restart_count);
+        }
+    }
+
+    println!();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
