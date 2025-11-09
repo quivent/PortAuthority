@@ -4,6 +4,7 @@ A CLI tool for managing subdomain-to-localhost port mappings. Simplify local dev
 
 ## Features
 
+### Core Features
 - Map subdomains to local ports (e.g., `api.localhost:3000`)
 - Automatic `/etc/hosts` file management
 - Cross-platform support (macOS, Linux, Windows)
@@ -11,6 +12,14 @@ A CLI tool for managing subdomain-to-localhost port mappings. Simplify local dev
 - Browser integration for quick access
 - Persistent configuration storage
 - Safe hosts file updates with automatic backups
+
+### Daemon Process Management (New!)
+- Background daemon for managing multiple app processes
+- Automatic process restart on failure
+- Health monitoring with TCP/HTTP checks
+- Process log management and viewing
+- Graceful shutdown handling
+- Configurable restart limits and intervals
 
 ## Installation
 
@@ -98,6 +107,133 @@ porter open <subdomain>
 ```
 
 Opens the mapped subdomain URL in your default browser.
+
+## Daemon Process Management
+
+Port Authority includes a powerful daemon system for managing background processes with automatic restart, health monitoring, and log management.
+
+### Managing the Daemon
+
+Start the daemon (runs in background):
+```bash
+port daemon start
+```
+
+Stop the daemon:
+```bash
+port daemon stop
+```
+
+Check daemon status:
+```bash
+port daemon status
+
+# Detailed status with app information
+port daemon status --verbose
+```
+
+Restart the daemon:
+```bash
+port daemon restart
+```
+
+### Managing Apps
+
+Add an app to the daemon:
+```bash
+port app add myapp \
+  --command "npm start" \
+  --port 3000 \
+  --dir /path/to/app
+
+# With custom options
+port app add api \
+  --command "python app.py" \
+  --port 8000 \
+  --dir ~/projects/api \
+  --env DATABASE_URL=postgres://localhost/db \
+  --env DEBUG=true \
+  --max-restarts 10 \
+  --health-interval 60
+```
+
+List managed apps:
+```bash
+port app list
+
+# Include live status from daemon
+port app list --status
+```
+
+View app logs:
+```bash
+port app logs myapp
+
+# Last 50 lines
+port app logs myapp --lines 50
+
+# Follow log output
+port app logs myapp --follow
+```
+
+Remove an app:
+```bash
+port app remove myapp
+
+# Skip confirmation
+port app remove myapp --yes
+```
+
+### App Configuration Options
+
+- `--command`: Command to execute (required)
+- `--port`: Port for health checks (required)
+- `--dir`: Working directory (required)
+- `--env`: Environment variables (KEY=VALUE format, can be used multiple times)
+- `--no-auto-restart`: Disable automatic restart on failure
+- `--max-restarts`: Maximum restart attempts (default: 5)
+- `--health-interval`: Health check interval in seconds (default: 30)
+- `--health-path`: HTTP health check path (e.g., /health)
+
+### How It Works
+
+1. **Background Daemon**: Runs as a background process managing all your apps
+2. **Health Monitoring**: Checks each app every 30 seconds (configurable)
+3. **Auto-Restart**: Automatically restarts failed apps with exponential backoff
+4. **Log Management**: Stores stdout/stderr logs with automatic rotation
+5. **Graceful Shutdown**: Properly stops all apps when daemon is stopped
+
+### Example Workflow
+
+```bash
+# Start the daemon
+port daemon start
+
+# Add your development apps
+port app add frontend \
+  --command "npm run dev" \
+  --port 3000 \
+  --dir ~/projects/frontend
+
+port app add backend \
+  --command "python manage.py runserver" \
+  --port 8000 \
+  --dir ~/projects/backend \
+  --env DEBUG=1
+
+port app add database \
+  --command "docker run -p 5432:5432 postgres" \
+  --port 5432 \
+  --dir /tmp
+
+# Check status
+port daemon status --verbose
+
+# View logs
+port app logs backend --lines 100
+
+# All apps now run in the background with auto-restart!
+```
 
 ### Removing Mappings
 
