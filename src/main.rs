@@ -8,6 +8,7 @@ mod nginx;
 mod output;
 mod ports;
 mod process;
+mod systemd;
 
 use clap::{Parser, Subcommand};
 use config::Config;
@@ -285,6 +286,34 @@ enum DaemonCommands {
 
     /// Restart the daemon
     Restart,
+
+    /// Install systemd service
+    InstallService {
+        /// Install as system service (requires sudo)
+        #[arg(long)]
+        system: bool,
+    },
+
+    /// Uninstall systemd service
+    UninstallService {
+        /// Uninstall system service (requires sudo)
+        #[arg(long)]
+        system: bool,
+    },
+
+    /// Enable systemd service to start on boot
+    EnableService {
+        /// Enable system service (requires sudo)
+        #[arg(long)]
+        system: bool,
+    },
+
+    /// Disable systemd service from starting on boot
+    DisableService {
+        /// Disable system service (requires sudo)
+        #[arg(long)]
+        system: bool,
+    },
 }
 
 /// Parse environment variable in KEY=VALUE format
@@ -1197,6 +1226,18 @@ fn execute_daemon_command(command: DaemonCommands) -> Result<()> {
             DaemonCommands::Stop { force: _ } => handle_daemon_stop().await,
             DaemonCommands::Status { verbose } => handle_daemon_status(verbose).await,
             DaemonCommands::Restart => handle_daemon_restart().await,
+            DaemonCommands::InstallService { system } => {
+                systemd::install_service(system).map_err(Into::into)
+            }
+            DaemonCommands::UninstallService { system } => {
+                systemd::uninstall_service(system).map_err(Into::into)
+            }
+            DaemonCommands::EnableService { system } => {
+                systemd::enable_service(system).map_err(Into::into)
+            }
+            DaemonCommands::DisableService { system } => {
+                systemd::disable_service(system).map_err(Into::into)
+            }
         }
     })
 }
