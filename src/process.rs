@@ -305,16 +305,28 @@ impl ManagedProcess {
         }
 
         // Perform health check based on configuration
-        let strategy = if let Some(ref path) = self.config.health_check_path {
-            HealthCheckStrategy::Http {
+        let strategy = match self.config.health_check_type.as_str() {
+            "websocket" | "ws" => HealthCheckStrategy::WebSocket {
                 port: self.config.port,
-                path: path.clone(),
+                path: self
+                    .config
+                    .health_check_path
+                    .clone()
+                    .unwrap_or_else(|| "/".to_string()),
+                timeout_secs: self.config.websocket_timeout,
+            },
+            "http" | "https" => HealthCheckStrategy::Http {
+                port: self.config.port,
+                path: self
+                    .config
+                    .health_check_path
+                    .clone()
+                    .unwrap_or_else(|| "/health".to_string()),
                 expected_status: 200,
-            }
-        } else {
-            HealthCheckStrategy::TcpPort {
+            },
+            _ => HealthCheckStrategy::TcpPort {
                 port: self.config.port,
-            }
+            },
         };
 
         let status = strategy.check().await?;
@@ -391,6 +403,13 @@ pub enum HealthCheckStrategy {
         path: String,
         expected_status: u16,
     },
+
+    /// WebSocket connection check
+    WebSocket {
+        port: u16,
+        path: String,
+        timeout_secs: u64,
+    },
 }
 
 impl HealthCheckStrategy {
@@ -402,6 +421,11 @@ impl HealthCheckStrategy {
                 path,
                 expected_status,
             } => self.check_http(*port, path, *expected_status).await,
+            Self::WebSocket {
+                port,
+                path,
+                timeout_secs,
+            } => self.check_websocket(*port, path, *timeout_secs).await,
         }
     }
 
@@ -438,6 +462,40 @@ impl HealthCheckStrategy {
             _ => Ok(HealthStatus {
                 healthy: false,
                 message: format!("HTTP endpoint http://127.0.0.1:{}{} not responding", port, path),
+                check_time: Instant::now(),
+            }),
+        }
+    }
+
+    async fn check_websocket(
+        &self,
+        port: u16,
+        path: &str,
+        timeout_secs: u64,
+    ) -> Result<HealthStatus> {
+        use tokio::time::{timeout, Duration};
+        use tokio_tungstenite::connect_async;
+
+        let url = format!("ws://127.0.0.1:{}{}", port, path);
+        let timeout_duration = Duration::from_secs(timeout_secs);
+
+        match timeout(timeout_duration, connect_async(&url)).await {
+            Ok(Ok((ws_stream, _))) => {
+                drop(ws_stream); // Close connection
+                Ok(HealthStatus {
+                    healthy: true,
+                    message: format!("WebSocket endpoint {} is responding", url),
+                    check_time: Instant::now(),
+                })
+            }
+            Ok(Err(e)) => Ok(HealthStatus {
+                healthy: false,
+                message: format!("WebSocket connection failed: {}", e),
+                check_time: Instant::now(),
+            }),
+            Err(_) => Ok(HealthStatus {
+                healthy: false,
+                message: format!("WebSocket connection timed out after {}s", timeout_secs),
                 check_time: Instant::now(),
             }),
         }

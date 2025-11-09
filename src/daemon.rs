@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{mpsc, RwLock, watch};
 
 /// Daemon configuration
 #[derive(Debug, Clone)]
@@ -39,7 +39,11 @@ pub enum DaemonCommand {
     StartApp(String),
     StopApp(String),
     RestartApp(String),
+    StartGroup(String),
+    StopGroup(String),
+    RestartGroup(String),
     GetStatus(tokio::sync::oneshot::Sender<DaemonStatus>),
+    ReloadApps,  // Hot-reload apps from config
     Shutdown,
 }
 
@@ -101,6 +105,15 @@ impl Daemon {
 
         info!("Daemon started successfully, entering monitoring loop");
 
+        // Setup config file watcher
+        let (config_tx, mut config_rx) = watch::channel(());
+        let config_path = Config::config_path()?;
+        tokio::spawn(async move {
+            if let Err(e) = Self::watch_config_file(config_path, config_tx).await {
+                error!("Config file watcher error: {}", e);
+            }
+        });
+
         // Main event loop
         let mut health_check_interval = tokio::time::interval(Duration::from_secs(10));
 
@@ -115,6 +128,12 @@ impl Daemon {
                 _ = health_check_interval.tick() => {
                     if self.config.health_check_enabled {
                         self.check_all_health().await?;
+                    }
+                }
+                Ok(_) = config_rx.changed() => {
+                    info!("Config file changed, reloading apps");
+                    if let Err(e) = self.reload_apps_from_config().await {
+                        error!("Failed to reload apps from config: {}", e);
                     }
                 }
             }
@@ -229,10 +248,30 @@ impl Daemon {
                 self.restart_app(&name).await?;
                 Ok(false)
             }
+            DaemonCommand::StartGroup(group) => {
+                info!("Received command to start group: {}", group);
+                self.start_group(&group).await?;
+                Ok(false)
+            }
+            DaemonCommand::StopGroup(group) => {
+                info!("Received command to stop group: {}", group);
+                self.stop_group(&group).await?;
+                Ok(false)
+            }
+            DaemonCommand::RestartGroup(group) => {
+                info!("Received command to restart group: {}", group);
+                self.restart_group(&group).await?;
+                Ok(false)
+            }
             DaemonCommand::GetStatus(tx) => {
                 debug!("Received status request");
                 let status = self.get_status().await;
                 let _ = tx.send(status);
+                Ok(false)
+            }
+            DaemonCommand::ReloadApps => {
+                info!("Received command to reload apps");
+                self.reload_apps_from_config().await?;
                 Ok(false)
             }
             DaemonCommand::Shutdown => {
@@ -323,6 +362,174 @@ impl Daemon {
             apps: app_statuses,
             total_restarts,
         }
+    }
+
+    /// Watch config file for changes
+    async fn watch_config_file(
+        config_path: PathBuf,
+        tx: watch::Sender<()>,
+    ) -> Result<()> {
+        use notify::{Config as NotifyConfig, Event, RecommendedWatcher, RecursiveMode, Watcher};
+        use tokio::sync::mpsc;
+
+        let (event_tx, mut event_rx) = mpsc::channel(100);
+
+        // Create watcher
+        let mut watcher = RecommendedWatcher::new(
+            move |res: notify::Result<Event>| {
+                if let Ok(event) = res {
+                    let _ = event_tx.blocking_send(event);
+                }
+            },
+            NotifyConfig::default(),
+        )
+        .map_err(|e| PorterError::Daemon(format!("Failed to create file watcher: {}", e)))?;
+
+        // Watch config file
+        watcher
+            .watch(&config_path, RecursiveMode::NonRecursive)
+            .map_err(|e| PorterError::Daemon(format!("Failed to watch config file: {}", e)))?;
+
+        info!("Watching config file for changes: {:?}", config_path);
+
+        // Process events
+        while let Some(event) = event_rx.recv().await {
+            use notify::EventKind;
+
+            match event.kind {
+                EventKind::Modify(_) | EventKind::Create(_) => {
+                    debug!("Config file modified, notifying daemon");
+                    let _ = tx.send(());
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Reload apps from configuration file
+    async fn reload_apps_from_config(&mut self) -> Result<()> {
+        info!("Reloading apps from config file");
+
+        let config = Config::load()?;
+        let new_registry = AppRegistry::from_configs(config.apps)?;
+
+        // Atomically update registry
+        {
+            let mut registry = self.registry.write().await;
+            *registry = new_registry;
+        } // Drop the write lock here
+
+        // Sync running processes with new registry
+        self.sync_processes_with_registry().await?;
+
+        info!("Apps reloaded successfully");
+        Ok(())
+    }
+
+    /// Sync running processes with updated registry
+    async fn sync_processes_with_registry(&mut self) -> Result<()> {
+        let registry = self.registry.read().await;
+        let mut processes = self.processes.write().await;
+
+        // Stop removed apps
+        let current_apps: Vec<String> = processes.keys().cloned().collect();
+        for app_name in current_apps {
+            if !registry.contains(&app_name) {
+                info!("App {} removed from config, stopping", app_name);
+                if let Some(mut process) = processes.remove(&app_name) {
+                    let _ = process.stop();
+                }
+            }
+        }
+
+        // Start new apps
+        for app_config in registry.list() {
+            if !processes.contains_key(&app_config.name) {
+                info!("New app {} found in config, starting", app_config.name);
+                match ManagedProcess::new(app_config.clone()) {
+                    Ok(mut process) => {
+                        if let Err(e) = process.start() {
+                            error!("Failed to start new app {}: {}", app_config.name, e);
+                        } else {
+                            info!("Started app: {}", app_config.name);
+                            processes.insert(app_config.name.clone(), process);
+                        }
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to create managed process for {}: {}",
+                            app_config.name, e
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Start all apps in a group
+    async fn start_group(&mut self, group: &str) -> Result<()> {
+        info!("Starting apps in group: {}", group);
+
+        // Collect app names first, then drop the lock
+        let app_names: Vec<String> = {
+            let registry = self.registry.read().await;
+            let apps_in_group = registry.apps_in_group(group);
+
+            if apps_in_group.is_empty() {
+                return Err(PorterError::InvalidInput(format!(
+                    "No apps in group: {}",
+                    group
+                )));
+            }
+
+            apps_in_group.iter().map(|app| app.name.clone()).collect()
+        }; // Drop the read lock here
+
+        let mut errors = Vec::new();
+        for app_name in app_names {
+            if let Err(e) = self.start_app(&app_name).await {
+                errors.push(format!("{}: {}", app_name, e));
+            }
+        }
+
+        if !errors.is_empty() {
+            warn!("Some apps failed to start: {:?}", errors);
+        }
+
+        Ok(())
+    }
+
+    /// Stop all apps in a group
+    async fn stop_group(&mut self, group: &str) -> Result<()> {
+        info!("Stopping apps in group: {}", group);
+
+        // Collect app names first, then drop the lock
+        let app_names: Vec<String> = {
+            let registry = self.registry.read().await;
+            let apps_in_group = registry.apps_in_group(group);
+            apps_in_group.iter().map(|app| app.name.clone()).collect()
+        }; // Drop the read lock here
+
+        for app_name in app_names {
+            let _ = self.stop_app(&app_name).await;
+        }
+
+        Ok(())
+    }
+
+    /// Restart all apps in a group
+    async fn restart_group(&mut self, group: &str) -> Result<()> {
+        info!("Restarting apps in group: {}", group);
+
+        self.stop_group(group).await?;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        self.start_group(group).await?;
+
+        Ok(())
     }
 
     /// Setup signal handlers

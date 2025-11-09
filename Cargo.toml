@@ -30,9 +30,11 @@ sudo = "0.6"
 tokio = { version = "1.0", features = ["full"] }
 hyper = { version = "0.14", features = ["full"] }
 hyper-reverse-proxy = "0.5"
+notify = "6.0"  # For filesystem watching (daemon auto-reload)
+tokio-tungstenite = "0.21"  # For WebSocket health checks
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["signal"] }
+nix = { version = "0.27", features = ["signal", "resource"] }
 
 [dev-dependencies]
 tempfile = "3.8"

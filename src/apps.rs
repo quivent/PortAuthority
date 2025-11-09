@@ -39,6 +39,18 @@ pub struct AppConfig {
     /// Optional HTTP health check path
     #[serde(default)]
     pub health_check_path: Option<String>,
+
+    /// Health check type (tcp, http, websocket)
+    #[serde(default = "default_health_check_type")]
+    pub health_check_type: String,
+
+    /// WebSocket-specific timeout (seconds)
+    #[serde(default = "default_websocket_timeout")]
+    pub websocket_timeout: u64,
+
+    /// Groups this app belongs to
+    #[serde(default)]
+    pub groups: Vec<String>,
 }
 
 fn default_auto_restart() -> bool {
@@ -49,6 +61,12 @@ fn default_max_restarts() -> u32 {
 }
 fn default_health_interval() -> u64 {
     30
+}
+fn default_health_check_type() -> String {
+    "tcp".to_string()
+}
+fn default_websocket_timeout() -> u64 {
+    5
 }
 
 impl AppConfig {
@@ -64,6 +82,9 @@ impl AppConfig {
             max_restarts: default_max_restarts(),
             health_check_interval: default_health_interval(),
             health_check_path: None,
+            health_check_type: default_health_check_type(),
+            websocket_timeout: default_websocket_timeout(),
+            groups: Vec::new(),
         }
     }
 
@@ -263,6 +284,42 @@ impl AppRegistry {
         let mut apps: Vec<_> = self.apps.values().cloned().collect();
         apps.sort_by_key(|a| a.name.clone());
         apps
+    }
+
+    /// Get all apps in a group
+    pub fn apps_in_group(&self, group: &str) -> Vec<&AppConfig> {
+        self.apps
+            .values()
+            .filter(|app| app.groups.contains(&group.to_string()))
+            .collect()
+    }
+
+    /// Get all unique groups
+    pub fn list_groups(&self) -> Vec<String> {
+        let mut groups = std::collections::HashSet::new();
+        for app in self.apps.values() {
+            for group in &app.groups {
+                groups.insert(group.clone());
+            }
+        }
+        let mut result: Vec<_> = groups.into_iter().collect();
+        result.sort();
+        result
+    }
+
+    /// Validate group name
+    pub fn validate_group_name(name: &str) -> Result<()> {
+        if name.is_empty() {
+            return Err(PorterError::InvalidInput(
+                "Group name cannot be empty".into(),
+            ));
+        }
+        if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            return Err(PorterError::InvalidInput(
+                "Group name must be alphanumeric with hyphens and underscores".into(),
+            ));
+        }
+        Ok(())
     }
 }
 
