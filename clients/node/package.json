@@ -1,0 +1,17 @@
+{
+  "name": "portauth-client",
+  "version": "1.0.0",
+  "description": "Port Authority client library for Node.js",
+  "main": "index.js",
+  "keywords": [
+    "port",
+    "authority",
+    "client",
+    "allocation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}

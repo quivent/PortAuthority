@@ -1,0 +1,20 @@
+{
+  "name": "portauth-cli",
+  "version": "1.0.0",
+  "description": "Port Authority CLI tool",
+  "bin": {
+    "portauth": "./portauth.js"
+  },
+  "keywords": [
+    "port",
+    "cli",
+    "authority"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2",
+    "axios": "^1.6.2"
+  }
+}
