@@ -1,165 +1,182 @@
 /**
- * Port Registry - SQLite-backed port allocation database
+ * Port Registry - JSON-backed port allocation database
+ * (No native dependencies - pure JavaScript)
  */
 
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
 class PortRegistry {
     constructor(dbPath = null) {
-        const defaultPath = path.join(__dirname, '..', 'port-registry.db');
+        const defaultPath = path.join(__dirname, '..', 'port-registry.json');
         this.dbPath = dbPath || defaultPath;
-        this.db = new Database(this.dbPath);
-        this.initialize();
+        this.allocations = [];
+        this.nextId = 1;
+        this.load();
     }
 
-    initialize() {
-        // Create allocations table
-        this.db.exec(`
-            CREATE TABLE IF NOT EXISTS allocations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                service_name TEXT UNIQUE NOT NULL,
-                port INTEGER UNIQUE NOT NULL,
-                project TEXT DEFAULT 'default',
-                priority INTEGER DEFAULT 1,
-                phi_optimized INTEGER DEFAULT 0,
-                status TEXT DEFAULT 'active',
-                allocated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                last_seen TEXT DEFAULT CURRENT_TIMESTAMP,
-                metadata TEXT
-            )
-        `);
+    /**
+     * Load allocations from JSON file
+     */
+    load() {
+        try {
+            if (fs.existsSync(this.dbPath)) {
+                const data = JSON.parse(fs.readFileSync(this.dbPath, 'utf8'));
+                this.allocations = data.allocations || [];
+                this.nextId = data.nextId || 1;
+                console.log(`✅ Port registry loaded from ${this.dbPath} (${this.allocations.length} allocations)`);
+            } else {
+                console.log(`✅ Port registry initialized at ${this.dbPath} (new database)`);
+                this.save();
+            }
+        } catch (error) {
+            console.error(`⚠️  Failed to load registry, starting fresh:`, error.message);
+            this.allocations = [];
+            this.nextId = 1;
+            this.save();
+        }
+    }
 
-        // Create index on port for fast lookups
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_port ON allocations(port)');
-        this.db.exec('CREATE INDEX IF NOT EXISTS idx_service ON allocations(service_name)');
-
-        console.log(`✅ Port registry initialized at ${this.dbPath}`);
+    /**
+     * Save allocations to JSON file
+     */
+    save() {
+        try {
+            const data = {
+                allocations: this.allocations,
+                nextId: this.nextId,
+                lastUpdated: new Date().toISOString()
+            };
+            fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 2), 'utf8');
+        } catch (error) {
+            console.error(`❌ Failed to save registry:`, error.message);
+        }
     }
 
     /**
      * Allocate a port for a service
      */
     allocate(serviceName, port, options = {}) {
-        const stmt = this.db.prepare(`
-            INSERT OR REPLACE INTO allocations
-            (service_name, port, project, priority, phi_optimized, status, metadata)
-            VALUES (?, ?, ?, ?, ?, 'active', ?)
-        `);
+        // Remove existing allocation if any
+        this.allocations = this.allocations.filter(a => a.serviceName !== serviceName);
 
-        const metadata = JSON.stringify(options.metadata || {});
-
-        stmt.run(
+        const allocation = {
+            id: this.nextId++,
             serviceName,
             port,
-            options.project || 'default',
-            options.priority || 1,
-            options.phiOptimized ? 1 : 0,
-            metadata
-        );
+            project: options.project || 'default',
+            priority: options.priority || 1,
+            phiOptimized: options.phiOptimized || false,
+            status: 'active',
+            allocatedAt: new Date().toISOString(),
+            lastSeen: new Date().toISOString(),
+            metadata: options.metadata || {}
+        };
 
-        return this.getByService(serviceName);
+        this.allocations.push(allocation);
+        this.save();
+
+        return this.formatAllocation(allocation);
     }
 
     /**
      * Release a port allocation
      */
     release(serviceName, port) {
-        let stmt;
+        const initialLength = this.allocations.length;
+
         if (serviceName) {
-            stmt = this.db.prepare('DELETE FROM allocations WHERE service_name = ?');
-            stmt.run(serviceName);
+            this.allocations = this.allocations.filter(a => a.serviceName !== serviceName);
         } else if (port) {
-            stmt = this.db.prepare('DELETE FROM allocations WHERE port = ?');
-            stmt.run(port);
+            this.allocations = this.allocations.filter(a => a.port !== port);
         } else {
             return false;
         }
 
-        return true;
+        if (this.allocations.length < initialLength) {
+            this.save();
+            return true;
+        }
+
+        return false;
     }
 
     /**
      * Check if a port is available
      */
     isPortAvailable(port) {
-        const stmt = this.db.prepare('SELECT COUNT(*) as count FROM allocations WHERE port = ?');
-        const result = stmt.get(port);
-        return result.count === 0;
+        return !this.allocations.some(a => a.port === port);
     }
 
     /**
      * Get allocation by service name
      */
     getByService(serviceName) {
-        const stmt = this.db.prepare('SELECT * FROM allocations WHERE service_name = ?');
-        const row = stmt.get(serviceName);
-        return row ? this.formatAllocation(row) : null;
+        const allocation = this.allocations.find(a => a.serviceName === serviceName);
+        return allocation ? this.formatAllocation(allocation) : null;
     }
 
     /**
      * Get allocation by port
      */
     getByPort(port) {
-        const stmt = this.db.prepare('SELECT * FROM allocations WHERE port = ?');
-        const row = stmt.get(port);
-        return row ? this.formatAllocation(row) : null;
+        const allocation = this.allocations.find(a => a.port === port);
+        return allocation ? this.formatAllocation(allocation) : null;
     }
 
     /**
      * Get all allocations
      */
     getAllAllocations() {
-        const stmt = this.db.prepare('SELECT * FROM allocations ORDER BY port ASC');
-        const rows = stmt.all();
-        return rows.map(row => this.formatAllocation(row));
+        return this.allocations
+            .sort((a, b) => a.port - b.port)
+            .map(a => this.formatAllocation(a));
     }
 
     /**
      * Get allocations by project
      */
     getAllocationsByProject(project) {
-        const stmt = this.db.prepare('SELECT * FROM allocations WHERE project = ? ORDER BY port ASC');
-        const rows = stmt.all(project);
-        return rows.map(row => this.formatAllocation(row));
+        return this.allocations
+            .filter(a => a.project === project)
+            .sort((a, b) => a.port - b.port)
+            .map(a => this.formatAllocation(a));
     }
 
     /**
      * Update last seen timestamp
      */
     updateLastSeen(serviceName) {
-        const stmt = this.db.prepare(`
-            UPDATE allocations
-            SET last_seen = CURRENT_TIMESTAMP
-            WHERE service_name = ?
-        `);
-        stmt.run(serviceName);
+        const allocation = this.allocations.find(a => a.serviceName === serviceName);
+        if (allocation) {
+            allocation.lastSeen = new Date().toISOString();
+            this.save();
+        }
     }
 
     /**
-     * Format database row to allocation object
+     * Format allocation object
      */
-    formatAllocation(row) {
+    formatAllocation(alloc) {
         return {
-            id: row.id,
-            serviceName: row.service_name,
-            port: row.port,
-            project: row.project,
-            priority: row.priority,
-            phiOptimized: row.phi_optimized === 1,
-            status: row.status,
-            allocatedAt: row.allocated_at,
-            lastSeen: row.last_seen,
-            metadata: row.metadata ? JSON.parse(row.metadata) : {}
+            id: alloc.id,
+            serviceName: alloc.serviceName,
+            port: alloc.port,
+            project: alloc.project,
+            priority: alloc.priority,
+            phiOptimized: alloc.phiOptimized,
+            status: alloc.status,
+            allocatedAt: alloc.allocatedAt,
+            lastSeen: alloc.lastSeen,
+            metadata: alloc.metadata
         };
     }
 
     /**
-     * Close database connection
+     * Close database connection (no-op for JSON)
      */
     close() {
-        this.db.close();
+        this.save();
     }
 }
 
