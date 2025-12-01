@@ -1,0 +1,32 @@
+[Unit]
+Description=Port Authority - Centralized Port Management Service
+Documentation=file:///home/alice/PortAuthority/README.md
+After=network.target
+
+[Service]
+Type=simple
+User=alice
+Group=alice
+WorkingDirectory=/home/alice/PortAuthority
+ExecStart=/usr/bin/node /home/alice/PortAuthority/service/index.js
+Restart=always
+RestartSec=10
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT_AUTHORITY_PORT=9999
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=port-authority
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
