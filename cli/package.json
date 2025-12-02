@@ -15,6 +15,15 @@
   "dependencies": {
     "commander": "^11.1.0",
     "chalk": "^4.1.2",
-    "axios": "^1.6.2"
+    "axios": "^1.6.2",
+    "cli-table3": "^0.6.3",
+    "boxen": "^5.1.2",
+    "gradient-string": "^2.0.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.5",
+    "marked": "^9.1.6",
+    "marked-terminal": "^6.0.0",
+    "open": "^8.4.2",
+    "chokidar": "^3.5.3"
   }
 }

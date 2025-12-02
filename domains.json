@@ -1,0 +1,17 @@
+{
+  "domains": [
+    {
+      "domain": "api.example.com",
+      "serviceName": "test-launcher",
+      "ssl": true,
+      "certPath": null,
+      "keyPath": null,
+      "proxyType": "http",
+      "customConfig": null,
+      "verified": false,
+      "createdAt": "2025-12-02T11:53:58.442Z",
+      "metadata": {}
+    }
+  ],
+  "lastUpdated": "2025-12-02T11:53:58.442Z"
+}

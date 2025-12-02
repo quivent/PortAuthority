@@ -12,6 +12,8 @@ const cors = require('cors');
 const { PortRegistry } = require('./registry');
 const { AllocationEngine } = require('./engine');
 const { Enforcer } = require('./enforcer');
+const { Launcher } = require('./launcher');
+const { DomainManager } = require('./domains');
 
 // Sacred Geometry Constants
 const PHI = 1.618033988749895;
@@ -25,6 +27,8 @@ class PortAuthorityService {
         this.registry = new PortRegistry();
         this.engine = new AllocationEngine(this.registry);
         this.enforcer = new Enforcer(this.registry);
+        this.launcher = new Launcher(this.registry);
+        this.domainManager = new DomainManager();
 
         this.setupMiddleware();
         this.setupRoutes();
@@ -144,6 +148,269 @@ class PortAuthorityService {
             });
 
             res.json(metrics);
+        });
+
+        // Discover all services
+        this.app.get('/discover', async (req, res) => {
+            try {
+                const portRangeStart = parseInt(req.query.start) || 1000;
+                const portRangeEnd = parseInt(req.query.end) || 65535;
+                const includeRegistered = req.query.includeRegistered === 'true';
+
+                const services = await this.enforcer.discoverAllServices({
+                    portRangeStart,
+                    portRangeEnd,
+                    includeRegistered
+                });
+
+                res.json({ services, count: services.length });
+            } catch (error) {
+                console.error('Discovery error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Force register a single service
+        this.app.post('/discover/register/:port', async (req, res) => {
+            try {
+                const port = parseInt(req.params.port);
+                const { kill, serviceName, project } = req.body;
+
+                const result = await this.enforcer.forceRegister(port, {
+                    kill: kill || false,
+                    serviceName,
+                    project
+                });
+
+                res.json(result);
+            } catch (error) {
+                console.error('Force register error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Batch force register all discovered services
+        this.app.post('/discover/register-all', async (req, res) => {
+            try {
+                const { portRangeStart, portRangeEnd, kill, project } = req.body;
+
+                const results = await this.enforcer.batchForceRegister({
+                    portRangeStart,
+                    portRangeEnd,
+                    kill: kill || false,
+                    project
+                });
+
+                res.json({
+                    results,
+                    total: results.length,
+                    succeeded: results.filter(r => r.status === 'registered').length,
+                    failed: results.filter(r => r.status === 'failed').length,
+                    alreadyRegistered: results.filter(r => r.status === 'already-registered').length
+                });
+            } catch (error) {
+                console.error('Batch register error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // LAUNCHER ENDPOINTS
+
+        // Launch a service
+        this.app.post('/launcher/launch/:serviceName', async (req, res) => {
+            try {
+                const { serviceName } = req.params;
+                const { command, cwd, env, autoRestart, captureOutput } = req.body;
+
+                if (!command) {
+                    return res.status(400).json({ error: 'command is required' });
+                }
+
+                const result = await this.launcher.launch(serviceName, {
+                    command,
+                    cwd,
+                    env,
+                    autoRestart,
+                    captureOutput
+                });
+
+                res.json(result);
+            } catch (error) {
+                console.error('Launch error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Stop a service
+        this.app.post('/launcher/stop/:serviceName', async (req, res) => {
+            try {
+                const { serviceName } = req.params;
+                const { force } = req.body;
+
+                const result = await this.launcher.stop(serviceName, { force });
+                res.json(result);
+            } catch (error) {
+                console.error('Stop error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Restart a service
+        this.app.post('/launcher/restart/:serviceName', async (req, res) => {
+            try {
+                const { serviceName } = req.params;
+                const result = await this.launcher.restart(serviceName);
+                res.json(result);
+            } catch (error) {
+                console.error('Restart error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Get service status
+        this.app.get('/launcher/status/:serviceName', async (req, res) => {
+            try {
+                const { serviceName } = req.params;
+                const status = await this.launcher.status(serviceName);
+                res.json(status);
+            } catch (error) {
+                console.error('Status error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Get all service statuses
+        this.app.get('/launcher/status', async (req, res) => {
+            try {
+                const runningOnly = req.query.runningOnly === 'true';
+                const statuses = await this.launcher.statusAll({ runningOnly });
+                res.json({ services: statuses, count: statuses.length });
+            } catch (error) {
+                console.error('Status all error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Get service logs
+        this.app.get('/launcher/logs/:serviceName', (req, res) => {
+            try {
+                const { serviceName } = req.params;
+                const lines = parseInt(req.query.lines) || 50;
+                const logs = this.launcher.getLogs(serviceName, { lines });
+                res.json(logs);
+            } catch (error) {
+                console.error('Logs error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // DOMAIN MANAGEMENT ENDPOINTS
+
+        // Get all domains
+        this.app.get('/domains', (req, res) => {
+            try {
+                const domains = this.domainManager.getAllDomains();
+                res.json(domains);
+            } catch (error) {
+                console.error('Domains list error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Get domain by name
+        this.app.get('/domains/:domain', (req, res) => {
+            try {
+                const domain = this.domainManager.getDomain(req.params.domain);
+                if (domain) {
+                    res.json(domain);
+                } else {
+                    res.status(404).json({ error: 'Domain not found' });
+                }
+            } catch (error) {
+                console.error('Domain get error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Add domain mapping
+        this.app.post('/domains', (req, res) => {
+            try {
+                const { domain, serviceName, ssl, certPath, keyPath, proxyType, customConfig } = req.body;
+
+                if (!domain || !serviceName) {
+                    return res.status(400).json({ error: 'domain and serviceName are required' });
+                }
+
+                // Verify service exists
+                const service = this.registry.getByService(serviceName);
+                if (!service) {
+                    return res.status(404).json({ error: `Service '${serviceName}' not found` });
+                }
+
+                const mapping = this.domainManager.addDomain(domain, serviceName, {
+                    ssl,
+                    certPath,
+                    keyPath,
+                    proxyType,
+                    customConfig
+                });
+
+                res.json(mapping);
+            } catch (error) {
+                console.error('Domain add error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Remove domain mapping
+        this.app.delete('/domains/:domain', (req, res) => {
+            try {
+                const removed = this.domainManager.removeDomain(req.params.domain);
+                if (removed) {
+                    res.json({ success: true });
+                } else {
+                    res.status(404).json({ error: 'Domain not found' });
+                }
+            } catch (error) {
+                console.error('Domain remove error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Verify domain
+        this.app.post('/domains/:domain/verify', (req, res) => {
+            try {
+                const updated = this.domainManager.verifyDomain(req.params.domain);
+                if (updated) {
+                    res.json(updated);
+                } else {
+                    res.status(404).json({ error: 'Domain not found' });
+                }
+            } catch (error) {
+                console.error('Domain verify error:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        // Generate config
+        this.app.get('/domains/config/:type', (req, res) => {
+            try {
+                const type = req.params.type.toLowerCase();
+
+                let config;
+                if (type === 'nginx') {
+                    config = this.domainManager.generateNginxConfig(this.registry);
+                } else if (type === 'caddy') {
+                    config = this.domainManager.generateCaddyConfig(this.registry);
+                } else {
+                    return res.status(400).json({ error: 'Invalid config type. Use: nginx or caddy' });
+                }
+
+                res.type('text/plain').send(config);
+            } catch (error) {
+                console.error('Config generation error:', error);
+                res.status(500).json({ error: error.message });
+            }
         });
     }
 

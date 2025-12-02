@@ -70,7 +70,16 @@ class PortRegistry {
             status: 'active',
             allocatedAt: new Date().toISOString(),
             lastSeen: new Date().toISOString(),
-            metadata: options.metadata || {}
+            metadata: options.metadata || {},
+            // Launcher fields
+            process_pid: null,
+            process_status: 'stopped',
+            process_command: null,
+            process_cwd: null,
+            process_env: null,
+            process_started_at: null,
+            process_stopped_at: null,
+            auto_restart: false
         };
 
         this.allocations.push(allocation);
@@ -168,8 +177,57 @@ class PortRegistry {
             status: alloc.status,
             allocatedAt: alloc.allocatedAt,
             lastSeen: alloc.lastSeen,
-            metadata: alloc.metadata
+            metadata: alloc.metadata,
+            // Launcher fields
+            process_pid: alloc.process_pid || null,
+            process_status: alloc.process_status || 'stopped',
+            process_command: alloc.process_command || null,
+            process_cwd: alloc.process_cwd || null,
+            process_env: alloc.process_env || null,
+            process_started_at: alloc.process_started_at || null,
+            process_stopped_at: alloc.process_stopped_at || null,
+            auto_restart: alloc.auto_restart || false
         };
+    }
+
+    /**
+     * Update process information for a service
+     */
+    updateProcess(serviceName, processInfo) {
+        const allocation = this.allocations.find(a => a.serviceName === serviceName);
+        if (allocation) {
+            allocation.process_pid = processInfo.pid || null;
+            allocation.process_status = processInfo.status || 'stopped';
+            allocation.process_command = processInfo.command || null;
+            allocation.process_cwd = processInfo.cwd || null;
+            allocation.process_env = processInfo.env ? JSON.stringify(processInfo.env) : null;
+            allocation.process_started_at = processInfo.startedAt || null;
+            allocation.process_stopped_at = processInfo.stoppedAt || null;
+            allocation.auto_restart = processInfo.autoRestart || false;
+            this.save();
+        }
+    }
+
+    /**
+     * Update process status only
+     */
+    updateProcessStatus(serviceName, status, pid = null) {
+        const allocation = this.allocations.find(a => a.serviceName === serviceName);
+        if (allocation) {
+            allocation.process_status = status;
+            if (pid !== null) {
+                allocation.process_pid = pid;
+            }
+
+            if (status === 'running') {
+                allocation.process_started_at = new Date().toISOString();
+                allocation.process_stopped_at = null;
+            } else if (status === 'stopped' || status === 'crashed') {
+                allocation.process_stopped_at = new Date().toISOString();
+            }
+
+            this.save();
+        }
     }
 
     /**

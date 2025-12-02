@@ -27,7 +27,16 @@ class PortRegistry {
                 status TEXT DEFAULT 'active',
                 allocated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 last_seen TEXT DEFAULT CURRENT_TIMESTAMP,
-                metadata TEXT
+                metadata TEXT,
+                -- Launcher fields
+                process_pid INTEGER,
+                process_status TEXT DEFAULT 'stopped',
+                process_command TEXT,
+                process_cwd TEXT,
+                process_env TEXT,
+                process_started_at TEXT,
+                process_stopped_at TEXT,
+                auto_restart INTEGER DEFAULT 0
             )
         `);
 
@@ -153,6 +162,66 @@ class PortRegistry {
             lastSeen: row.last_seen,
             metadata: row.metadata ? JSON.parse(row.metadata) : {}
         };
+    }
+
+    /**
+     * Update process information for a service
+     */
+    updateProcess(serviceName, processInfo) {
+        const stmt = this.db.prepare(`
+            UPDATE allocations
+            SET process_pid = ?,
+                process_status = ?,
+                process_command = ?,
+                process_cwd = ?,
+                process_env = ?,
+                process_started_at = ?,
+                process_stopped_at = ?,
+                auto_restart = ?
+            WHERE service_name = ?
+        `);
+
+        stmt.run(
+            processInfo.pid || null,
+            processInfo.status || 'stopped',
+            processInfo.command || null,
+            processInfo.cwd || null,
+            processInfo.env ? JSON.stringify(processInfo.env) : null,
+            processInfo.startedAt || null,
+            processInfo.stoppedAt || null,
+            processInfo.autoRestart ? 1 : 0,
+            serviceName
+        );
+    }
+
+    /**
+     * Update process status only
+     */
+    updateProcessStatus(serviceName, status, pid = null) {
+        const updates = ['process_status = ?'];
+        const params = [status];
+
+        if (pid !== null) {
+            updates.push('process_pid = ?');
+            params.push(pid);
+        }
+
+        if (status === 'running') {
+            updates.push('process_started_at = CURRENT_TIMESTAMP');
+            updates.push('process_stopped_at = NULL');
+        } else if (status === 'stopped' || status === 'crashed') {
+            updates.push('process_stopped_at = CURRENT_TIMESTAMP');
+        }
+
+        params.push(serviceName);
+
+        const stmt = this.db.prepare(`
+            UPDATE allocations
+            SET ${updates.join(', ')}
+            WHERE service_name = ?
+        `);
+
+        stmt.run(...params);
     }
 
     /**

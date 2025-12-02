@@ -1,203 +1,202 @@
 #!/usr/bin/env node
 
 /**
- * Port Authority CLI - Command-line interface for port management
+ * Port Authority CLI - Enhanced command-line interface for port management
+ * Beautiful design with color-grouped commands, tree visualization, and comprehensive docs
  */
 
 const { Command } = require('commander');
 const chalk = require('chalk');
-const axios = require('axios');
+const boxen = require('boxen');
+const { gradients } = require('./src/utils/colors');
 
-const PORT_AUTHORITY_URL = process.env.PORT_AUTHORITY_URL || 'http://localhost:9999';
+// Import commands
+const allocateCommand = require('./src/commands/allocate');
+const releaseCommand = require('./src/commands/release');
+const checkCommand = require('./src/commands/check');
+const listCommand = require('./src/commands/list');
+const metricsCommand = require('./src/commands/metrics');
+const healthCommand = require('./src/commands/health');
+const treeCommand = require('./src/commands/tree');
+const docsCommand = require('./src/commands/docs');
+const statsCommand = require('./src/commands/stats');
+const scanCommand = require('./src/commands/scan');
+const watchCommand = require('./src/commands/watch');
+const exportCommand = require('./src/commands/export');
+const enforceCommand = require('./src/commands/enforce');
+const launchCommand = require('./src/commands/launch');
+const autoLaunchCommand = require('./src/commands/auto-launch');
+const stopCommand = require('./src/commands/stop');
+const restartCommand = require('./src/commands/restart');
+const psCommand = require('./src/commands/ps');
+const logsCommand = require('./src/commands/logs');
+const domainsProgram = require('./src/commands/domains');
 
 const program = new Command();
 
+// Custom help with tree
+program.configureHelp({
+    showGlobalOptions: true
+});
+
 program
     .name('portauth')
-    .description('Port Authority CLI - Centralized port management')
-    .version('1.0.0');
+    .description('Port Authority CLI - Centralized port management with φ-optimization')
+    .version('2.0.0')
+    .addHelpText('beforeAll', () => {
+        const banner = boxen(
+            gradients.ocean('PORT AUTHORITY CLI v2.0') + '\n' +
+            chalk.gray('Centralized port management with golden ratio optimization'),
+            {
+                padding: 1,
+                margin: { top: 1, bottom: 1 },
+                borderStyle: 'round',
+                borderColor: 'cyan'
+            }
+        );
+        return banner;
+    })
+    .addHelpText('after', () => {
+        return '\n' + chalk.gray('Run ') + chalk.cyan.bold('portauth tree') + chalk.gray(' to see all commands organized by category\n') +
+               chalk.gray('Run ') + chalk.cyan.bold('portauth docs') + chalk.gray(' to view comprehensive documentation\n');
+    });
 
-// Allocate command
+// 🔵 CORE COMMANDS
 program
     .command('allocate <service-name>')
-    .description('Allocate a port for a service')
+    .description(chalk.blue('🔵 ') + 'Allocate a port for a service')
     .option('-p, --preferred <port>', 'Preferred port number')
     .option('--priority <priority>', 'Allocation priority (1-5)', '1')
     .option('--project <project>', 'Project name', 'default')
-    .action(async (serviceName, options) => {
-        try {
-            const response = await axios.post(`${PORT_AUTHORITY_URL}/allocate`, {
-                serviceName,
-                preferredPort: options.preferred ? parseInt(options.preferred) : undefined,
-                priority: parseInt(options.priority),
-                project: options.project
-            });
+    .action(allocateCommand);
 
-            const allocation = response.data;
-            console.log(chalk.green('✅ Port allocated successfully!'));
-            console.log('');
-            console.log(chalk.cyan('Service:'), allocation.serviceName);
-            console.log(chalk.cyan('Port:'), chalk.bold(allocation.port));
-            console.log(chalk.cyan('Project:'), allocation.project);
-            console.log(chalk.cyan('φ-Optimized:'), allocation.phiOptimized ? '✓' : '✗');
-            console.log('');
-            console.log(chalk.yellow('Use this port in your service:'));
-            console.log(chalk.gray(`  export PORT=${allocation.port}`));
-            console.log(chalk.gray(`  const port = ${allocation.port};`));
-        } catch (error) {
-            console.error(chalk.red('❌ Failed to allocate port:'), error.response?.data?.error || error.message);
-            process.exit(1);
-        }
-    });
-
-// Release command
 program
     .command('release <service-name>')
-    .description('Release a port allocation')
-    .action(async (serviceName) => {
-        try {
-            await axios.post(`${PORT_AUTHORITY_URL}/release`, { serviceName });
-            console.log(chalk.green(`✅ Port released for ${serviceName}`));
-        } catch (error) {
-            console.error(chalk.red('❌ Failed to release port:'), error.response?.data?.error || error.message);
-            process.exit(1);
-        }
-    });
+    .description(chalk.blue('🔵 ') + 'Release a port allocation')
+    .action(releaseCommand);
 
-// List command
-program
-    .command('list')
-    .description('List all port allocations')
-    .option('-p, --project <project>', 'Filter by project')
-    .action(async (options) => {
-        try {
-            const response = await axios.get(`${PORT_AUTHORITY_URL}/allocations`);
-            let allocations = response.data;
-
-            if (options.project) {
-                allocations = allocations.filter(a => a.project === options.project);
-            }
-
-            if (allocations.length === 0) {
-                console.log(chalk.yellow('No allocations found'));
-                return;
-            }
-
-            console.log(chalk.bold('\n📋 Port Allocations:\n'));
-            console.log(chalk.gray('─'.repeat(80)));
-
-            allocations.forEach(alloc => {
-                const phi = alloc.phiOptimized ? chalk.yellow('φ') : ' ';
-                console.log(
-                    chalk.cyan(alloc.port.toString().padEnd(6)),
-                    phi,
-                    chalk.white(alloc.serviceName.padEnd(30)),
-                    chalk.gray(alloc.project.padEnd(15)),
-                    chalk.dim(alloc.allocatedAt)
-                );
-            });
-
-            console.log(chalk.gray('─'.repeat(80)));
-            console.log(chalk.gray(`\nTotal: ${allocations.length} allocations`));
-        } catch (error) {
-            console.error(chalk.red('❌ Failed to list allocations:'), error.message);
-            process.exit(1);
-        }
-    });
-
-// Check command
 program
     .command('check <port>')
-    .description('Check if a port is available')
-    .action(async (port) => {
-        try {
-            const response = await axios.get(`${PORT_AUTHORITY_URL}/check/${port}`);
-            const { available } = response.data;
+    .description(chalk.blue('🔵 ') + 'Check if a port is available')
+    .action(checkCommand);
 
-            if (available) {
-                console.log(chalk.green(`✅ Port ${port} is available`));
-            } else {
-                console.log(chalk.red(`❌ Port ${port} is already allocated`));
-
-                // Get who is using it
-                const allocResponse = await axios.get(`${PORT_AUTHORITY_URL}/allocations`);
-                const allocation = allocResponse.data.find(a => a.port === parseInt(port));
-                if (allocation) {
-                    console.log(chalk.yellow(`   Allocated to: ${allocation.serviceName} (${allocation.project})`));
-                }
-            }
-        } catch (error) {
-            console.error(chalk.red('❌ Error checking port:'), error.message);
-            process.exit(1);
-        }
-    });
-
-// Enforce command
+// 🟢 MANAGEMENT COMMANDS
 program
-    .command('enforce')
-    .description('Enforce port authority - kill unauthorized processes')
-    .action(async () => {
-        try {
-            console.log(chalk.yellow('⚡ Enforcing port authority...'));
-            const response = await axios.post(`${PORT_AUTHORITY_URL}/enforce`);
-            const { violations, killed } = response.data;
+    .command('list')
+    .description(chalk.green('🟢 ') + 'List all port allocations')
+    .option('-p, --project <project>', 'Filter by project')
+    .action(listCommand);
 
-            if (killed === 0) {
-                console.log(chalk.green('✅ No violations detected - all ports authorized'));
-            } else {
-                console.log(chalk.red(`⚠️  Killed ${killed} unauthorized process(es)`));
-                violations.forEach(v => {
-                    console.log(chalk.gray(`   Port ${v.port}: PID ${v.pid}`));
-                });
-            }
-        } catch (error) {
-            console.error(chalk.red('❌ Enforcement failed:'), error.message);
-            process.exit(1);
-        }
-    });
-
-// Metrics command
 program
     .command('metrics')
-    .description('Show Port Authority metrics')
-    .action(async () => {
-        try {
-            const response = await axios.get(`${PORT_AUTHORITY_URL}/metrics`);
-            const metrics = response.data;
+    .description(chalk.green('🟢 ') + 'Show Port Authority metrics')
+    .action(metricsCommand);
 
-            console.log(chalk.bold('\n📊 Port Authority Metrics:\n'));
-            console.log(chalk.cyan('Total Allocations:'), metrics.totalAllocations);
-            console.log(chalk.cyan('Active Allocations:'), metrics.activeAllocations);
-            console.log(chalk.cyan('φ-Optimized:'), metrics.phiOptimized);
-            console.log(chalk.cyan('Port Range:'), `${metrics.portRange.start} - ${metrics.portRange.end}`);
-            console.log('');
-            console.log(chalk.bold('By Project:'));
-            Object.entries(metrics.byProject).forEach(([project, count]) => {
-                console.log(chalk.gray(`  ${project}:`), count);
-            });
-        } catch (error) {
-            console.error(chalk.red('❌ Failed to get metrics:'), error.message);
-            process.exit(1);
-        }
-    });
-
-// Health command
 program
     .command('health')
-    .description('Check Port Authority service health')
-    .action(async () => {
-        try {
-            const response = await axios.get(`${PORT_AUTHORITY_URL}/health`);
-            const health = response.data;
+    .description(chalk.green('🟢 ') + 'Check Port Authority service health')
+    .action(healthCommand);
 
-            console.log(chalk.green('✅ Port Authority is healthy'));
-            console.log(chalk.cyan('Uptime:'), `${Math.floor(health.uptime)}s`);
-            console.log(chalk.cyan('Allocations:'), health.allocations);
-        } catch (error) {
-            console.error(chalk.red('❌ Port Authority is not responding'));
-            console.error(chalk.gray(`   Make sure the service is running: npm start`));
-            process.exit(1);
-        }
-    });
+// 🟡 UTILITY COMMANDS
+program
+    .command('tree')
+    .description(chalk.yellow('🟡 ') + 'Show command hierarchy tree')
+    .action(treeCommand);
 
+program
+    .command('docs')
+    .description(chalk.yellow('🟡 ') + 'Show documentation')
+    .option('--web', 'Open documentation in browser')
+    .option('--glow', 'Render documentation with glow')
+    .action(docsCommand);
+
+program
+    .command('stats')
+    .description(chalk.yellow('🟡 ') + 'Show detailed statistics')
+    .option('-p, --project <project>', 'Filter by project')
+    .action(statsCommand);
+
+program
+    .command('scan')
+    .description(chalk.yellow('🟡 ') + 'Scan for port conflicts')
+    .option('--range <start-end>', 'Port range to scan (e.g., 3000-9999)')
+    .option('-p, --project <project>', 'Filter by project')
+    .action(scanCommand);
+
+program
+    .command('watch')
+    .description(chalk.yellow('🟡 ') + 'Watch allocations in real-time')
+    .option('-i, --interval <seconds>', 'Refresh interval in seconds', '5')
+    .option('-p, --project <project>', 'Filter by project')
+    .action(watchCommand);
+
+program
+    .command('export')
+    .description(chalk.yellow('🟡 ') + 'Export allocations to file')
+    .option('-f, --format <format>', 'Export format (json, csv, yaml)', 'json')
+    .option('-o, --output <file>', 'Output file name')
+    .option('-p, --project <project>', 'Filter by project')
+    .action(exportCommand);
+
+// 🔴 ADMINISTRATION COMMANDS
+program
+    .command('enforce')
+    .description(chalk.red('🔴 ') + 'Kill unauthorized processes on allocated ports')
+    .action(enforceCommand);
+
+// 🟣 LAUNCHER COMMANDS (Process Management)
+program
+    .command('launch <service-name>')
+    .description(chalk.magenta('🟣 ') + 'Launch a service with its allocated port')
+    .requiredOption('-c, --command <command>', 'Command to run')
+    .option('--cwd <directory>', 'Working directory')
+    .option('--env <vars>', 'Environment variables (e.g., "VAR1=value1,VAR2=value2")')
+    .option('--auto-restart', 'Auto-restart on crash')
+    .action(launchCommand);
+
+program
+    .command('up')
+    .description(chalk.magenta('🟣 ') + 'Auto-detect and launch service in current directory')
+    .option('-n, --name <service-name>', 'Override service name (defaults to directory name)')
+    .option('-p, --project <project>', 'Project name', 'auto')
+    .option('--auto-restart', 'Auto-restart on crash')
+    .action(autoLaunchCommand);
+
+program
+    .command('stop <service-name>')
+    .description(chalk.magenta('🟣 ') + 'Stop a running service')
+    .option('-f, --force', 'Force kill (SIGKILL instead of SIGTERM)')
+    .action(stopCommand);
+
+program
+    .command('restart <service-name>')
+    .description(chalk.magenta('🟣 ') + 'Restart a service')
+    .action(restartCommand);
+
+program
+    .command('ps [service-name]')
+    .description(chalk.magenta('🟣 ') + 'Show process status of services')
+    .option('--running-only', 'Show only running services')
+    .action(psCommand);
+
+program
+    .command('logs <service-name>')
+    .description(chalk.magenta('🟣 ') + 'View service logs')
+    .option('-n, --lines <number>', 'Number of lines to show', '50')
+    .option('-f, --follow', 'Follow log output')
+    .action(logsCommand);
+
+// 🌐 DOMAIN MANAGEMENT COMMANDS
+program
+    .addCommand(domainsProgram
+        .name('domains')
+        .description(chalk.cyan('🌐 ') + 'Manage domain-to-service mappings')
+    );
+
+// Handle no command (show help)
+if (process.argv.length === 2) {
+    program.help();
+}
+
+// Parse and execute
 program.parse();
