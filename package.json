@@ -6,8 +6,16 @@
   "scripts": {
     "start": "node service/index.js",
     "dev": "nodemon service/index.js",
-    "test": "jest",
-    "install-cli": "npm link cli"
+    "daemon": "node daemon.js start",
+    "daemon:stop": "node daemon.js stop",
+    "daemon:status": "node daemon.js status",
+    "daemon:restart": "node daemon.js restart",
+    "daemon:logs": "node daemon.js logs",
+    "launchd:install": "cp com.portauthority.daemon.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.portauthority.daemon.plist",
+    "launchd:uninstall": "launchctl unload ~/Library/LaunchAgents/com.portauthority.daemon.plist && rm ~/Library/LaunchAgents/com.portauthority.daemon.plist",
+    "launchd:restart": "launchctl kickstart -k gui/$(id -u)/com.portauthority.daemon",
+    "setup": "npm install && cd cli && npm install && npm link && cd .. && node daemon.js start",
+    "test": "jest"
   },
   "keywords": [
     "port",
@@ -20,7 +28,6 @@
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "better-sqlite3": "^9.2.2",
     "axios": "^1.6.2",
     "commander": "^11.1.0",
     "chalk": "^4.1.2",

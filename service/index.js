@@ -8,6 +8,7 @@
  */
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const { PortRegistry } = require('./registry');
 const { AllocationEngine } = require('./engine');
@@ -38,6 +39,7 @@ class PortAuthorityService {
     setupMiddleware() {
         this.app.use(cors());
         this.app.use(express.json());
+        this.app.use(express.static(path.join(__dirname, 'public')));
 
         // Request logging
         this.app.use((req, res, next) => {
@@ -450,6 +452,7 @@ class PortAuthorityService {
             console.log(`   POST   http://localhost:${PORT_AUTHORITY_PORT}/enforce`);
             console.log(`   GET    http://localhost:${PORT_AUTHORITY_PORT}/metrics`);
             console.log('');
+            console.log(`   WEB UI http://localhost:${PORT_AUTHORITY_PORT}/`);
         });
 
         // Graceful shutdown

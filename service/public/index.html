@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Port Authority</title>
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; transition: background 0.3s, color 0.3s; }
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; border: none; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ===== THEME: SOLARI ===== */
+body.theme-solari {
+  --bg-primary: #1a1a1a; --bg-secondary: #111; --bg-card: #1c1c1c;
+  --bg-header: #0d0d0d; --bg-sidebar: #0d0d0d; --bg-input: #222;
+  --text-primary: #e0e0e0; --text-secondary: #888; --text-header: #f5c518;
+  --accent: #f5c518; --accent-dim: #a3820f; --accent-secondary: #ff9800;
+  --status-running: #4caf50; --status-stopped: #f44336; --status-warning: #ff9800;
+  --border: #333; --border-heavy: #555;
+  --font-primary: 'Courier New', 'Lucida Console', monospace;
+  --font-header: 'Courier New', monospace;
+  --card-radius: 0px; --btn-radius: 2px;
+  background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-primary);
+}
+/* ===== THEME: MTA ===== */
+body.theme-mta {
+  --bg-primary: #f5f5f5; --bg-secondary: #e8e8e8; --bg-card: #fff;
+  --bg-header: #0039a6; --bg-sidebar: #111; --bg-input: #fff;
+  --text-primary: #222; --text-secondary: #666; --text-header: #fff;
+  --accent: #0039a6; --accent-dim: #002d7a; --accent-secondary: #00933c;
+  --status-running: #00933c; --status-stopped: #ee352e; --status-warning: #fccc0a;
+  --border: #ddd; --border-heavy: #bbb;
+  --font-primary: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-header: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --card-radius: 8px; --btn-radius: 6px;
+  background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-primary);
+}
+/* ===== THEME: BRUTALIST ===== */
+body.theme-brutalist {
+  --bg-primary: #d4cfc4; --bg-secondary: #c8c0b4; --bg-card: #cbc4b6;
+  --bg-header: #2a2a2a; --bg-sidebar: #3a3a3a; --bg-input: #ddd5c8;
+  --text-primary: #1a1a1a; --text-secondary: #555; --text-header: #e8d44d;
+  --accent: #cc3300; --accent-dim: #992600; --accent-secondary: #e8d44d;
+  --status-running: #2d5a27; --status-stopped: #8b0000; --status-warning: #e8d44d;
+  --border: #999; --border-heavy: #777;
+  --font-primary: 'Courier New', monospace;
+  --font-header: 'Arial Black', Impact, sans-serif;
+  --card-radius: 0px; --btn-radius: 0px;
+  background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-primary);
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px);
+}
+
+/* ===== LAYOUT ===== */
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-header); color: var(--text-header);
+  padding: 0 20px; height: 56px; flex-shrink: 0; z-index: 100;
+}
+.app-header h1 { font-family: var(--font-header); font-size: 18px; letter-spacing: 3px; text-transform: uppercase; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-clock { font-family: 'Courier New', monospace; font-size: 16px; letter-spacing: 2px; opacity: 0.9; }
+.health-strip {
+  display: flex; gap: 20px; background: var(--bg-secondary); padding: 6px 20px;
+  font-size: 12px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.health-strip .health-item { display: flex; align-items: center; gap: 6px; }
+.health-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.health-dot.ok { background: var(--status-running); }
+.health-dot.err { background: var(--status-stopped); }
+
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: 200px; background: var(--bg-sidebar); display: flex; flex-direction: column;
+  border-right: 1px solid var(--border); flex-shrink: 0; overflow-y: auto;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+  color: var(--text-header); opacity: 0.6; cursor: pointer; font-size: 13px;
+  text-transform: uppercase; letter-spacing: 1px; transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { opacity: 0.85; background: rgba(255,255,255,0.05); }
+.nav-item.active { opacity: 1; border-left-color: var(--accent); background: rgba(255,255,255,0.08); }
+.nav-icon { font-size: 16px; width: 22px; text-align: center; }
+
+/* Main content */
+.main-content { flex: 1; overflow-y: auto; padding: 24px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ===== THEME SWITCHER ===== */
+.theme-switcher { display: flex; gap: 4px; }
+.theme-btn {
+  padding: 5px 10px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  background: transparent; color: var(--text-header); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--btn-radius); opacity: 0.5; transition: all 0.15s;
+}
+.theme-btn:hover { opacity: 0.8; }
+.theme-btn.active { opacity: 1; background: rgba(255,255,255,0.15); border-color: var(--accent); }
+
+/* ===== COMPONENTS ===== */
+/* Metric cards */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.metric-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--card-radius);
+  padding: 20px; text-align: center;
+}
+.metric-value { font-size: 36px; font-weight: bold; color: var(--accent); }
+.metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-secondary); margin-top: 6px; }
+
+/* Tables */
+.pa-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pa-table thead { text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
+.pa-table th {
+  padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border-heavy);
+  color: var(--text-secondary); font-weight: 600;
+}
+.pa-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.pa-table tbody tr { transition: background 0.1s; }
+.pa-table tbody tr:hover { background: rgba(128,128,128,0.08); }
+
+/* Status badges */
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1px; font-weight: 700;
+}
+.badge-running { background: var(--status-running); color: #fff; }
+.badge-stopped { background: var(--status-stopped); color: #fff; }
+.badge-active { background: var(--status-running); color: #fff; }
+.badge-inactive { background: var(--text-secondary); color: #fff; }
+.badge-crashed { background: var(--status-warning); color: #000; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  border-radius: var(--btn-radius); font-weight: 600; transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-danger { background: var(--status-stopped); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 4px 10px; font-size: 10px; }
+.btn-group { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+
+/* Section headers */
+.section-title {
+  font-family: var(--font-header); font-size: 20px; text-transform: uppercase;
+  letter-spacing: 2px; margin-bottom: 20px; color: var(--accent);
+  border-bottom: 2px solid var(--border); padding-bottom: 10px;
+}
+.section-subtitle {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-secondary); margin: 20px 0 12px;
+}
+
+/* Cards grid */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--card-radius);
+  padding: 16px; transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border-heavy); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-title { font-weight: 700; font-size: 14px; }
+.card-meta { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+.card-actions { display: flex; gap: 6px; margin-top: 12px; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 1000; justify-content: center; align-items: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-content {
+  background: var(--bg-card); border: 2px solid var(--border-heavy); border-radius: var(--card-radius);
+  width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto;
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.modal-header h3 { font-family: var(--font-header); text-transform: uppercase; letter-spacing: 2px; font-size: 14px; }
+.modal-close { background: none; color: var(--text-primary); font-size: 24px; padding: 0 4px; }
+.modal-body { padding: 20px; }
+
+/* Form fields */
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-secondary); margin-bottom: 6px;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px; background: var(--bg-input); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--btn-radius); font-size: 14px;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.form-check { display: flex; align-items: center; gap: 8px; }
+.form-check input[type="checkbox"] { width: auto; }
+
+/* Toast */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 12px 20px; border-radius: var(--btn-radius); font-size: 13px;
+  color: #fff; animation: slideIn 0.3s ease; min-width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.toast-success { background: var(--status-running); }
+.toast-error { background: var(--status-stopped); }
+
+/* Pre/Code */
+.log-viewer { display: flex; flex-direction: column; gap: 16px; }
+.log-block { flex: 1; }
+.log-block h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.log-pre {
+  background: #0d0d0d; color: #ccc; padding: 16px; border-radius: var(--card-radius);
+  font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6;
+  max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+  border: 1px solid #333;
+}
+.config-pre {
+  background: var(--bg-secondary); padding: 16px; border-radius: var(--card-radius);
+  font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.5;
+  overflow-x: auto; border: 1px solid var(--border); position: relative;
+}
+.copy-btn {
+  position: absolute; top: 8px; right: 8px; padding: 4px 10px;
+  background: var(--accent); color: #000; font-size: 10px; border-radius: var(--btn-radius);
+  cursor: pointer; border: none; text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* Project chart */
+.bar-chart { margin-top: 12px; }
+.bar-row { display: flex; align-items: center; margin-bottom: 8px; gap: 12px; }
+.bar-label { width: 120px; font-size: 12px; text-align: right; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 24px; background: var(--bg-secondary); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; font-weight: 700; min-width: 30px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+.empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+/* Port check */
+.port-check-inline { display: flex; gap: 8px; align-items: center; }
+.port-check-inline input { width: 100px; padding: 6px 10px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--btn-radius); font-size: 13px; }
+.port-check-result { font-size: 12px; padding: 4px 10px; }
+
+/* ===== SOLARI SPECIFIC ===== */
+.theme-solari .solari-cell {
+  display: inline-block; background: #111; border: 1px solid #333;
+  padding: 2px 6px; margin: 0 1px; min-width: 16px; text-align: center;
+  font-family: 'Courier New', monospace;
+}
+.theme-solari .port-display { letter-spacing: 0; }
+@keyframes flipDown {
+  0% { transform: perspective(400px) rotateX(0); }
+  50% { transform: perspective(400px) rotateX(-90deg); opacity: 0.5; }
+  100% { transform: perspective(400px) rotateX(0); }
+}
+.theme-solari .flipping { animation: flipDown 0.3s ease-in-out; }
+
+/* ===== MTA SPECIFIC ===== */
+.theme-mta .route-bullet {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.theme-mta .card { border-left: 4px solid var(--accent); }
+.theme-mta .metric-card { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+/* ===== BRUTALIST SPECIFIC ===== */
+@keyframes flicker {
+  0%, 94%, 100% { filter: brightness(1); }
+  95% { filter: brightness(0.985); }
+  96% { filter: brightness(1.005); }
+  97% { filter: brightness(0.99); }
+}
+body.theme-brutalist { animation: flicker 6s infinite; }
+.theme-brutalist .section-title { border-bottom: 4px solid var(--accent); }
+.theme-brutalist .btn-danger {
+  background: repeating-linear-gradient(45deg, #8b0000, #8b0000 8px, #6b0000 8px, #6b0000 16px);
+}
+.theme-brutalist .pa-table { transform: rotate(-0.2deg); }
+.theme-brutalist .card { border: 3px solid var(--border-heavy); box-shadow: 4px 4px 0 var(--border); }
+
+/* ===== ANIMATIONS ===== */
+@keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .nav-label { display: none; }
+  .nav-item { justify-content: center; padding: 14px 8px; }
+  .main-content { padding: 16px; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-row { flex-direction: column; }
+}
+</style>
+</head>
+<body class="theme-solari">
+
+<!-- HEADER -->
+<header class="app-header">
+  <h1>Port Authority</h1>
+  <div class="header-right">
+    <div class="header-clock" id="clock">--:--:--</div>
+    <div class="theme-switcher">
+      <button class="theme-btn active" data-theme="solari" title="Retro Departure Board">SOLARI</button>
+      <button class="theme-btn" data-theme="mta" title="Modern Transit">MTA</button>
+      <button class="theme-btn" data-theme="brutalist" title="42nd Street Brutalist">42ND ST</button>
+    </div>
+  </div>
+</header>
+
+<!-- HEALTH STRIP -->
+<div class="health-strip" id="health-strip">
+  <div class="health-item"><span class="health-dot" id="health-dot"></span> <span id="health-status">Connecting...</span></div>
+  <div class="health-item">Allocations: <strong id="health-allocs">-</strong></div>
+  <div class="health-item">Uptime: <strong id="health-uptime">-</strong></div>
+</div>
+
+<!-- BODY -->
+<div class="app-body">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-item active" data-panel="dashboard"><span class="nav-icon">&#9632;</span><span class="nav-label">Dashboard</span></div>
+    <div class="nav-item" data-panel="allocations"><span class="nav-icon">&#9776;</span><span class="nav-label">Allocations</span></div>
+    <div class="nav-item" data-panel="services"><span class="nav-icon">&#9654;</span><span class="nav-label">Services</span></div>
+    <div class="nav-item" data-panel="discovery"><span class="nav-icon">&#9678;</span><span class="nav-label">Discovery</span></div>
+    <div class="nav-item" data-panel="domains"><span class="nav-icon">&#9673;</span><span class="nav-label">Domains</span></div>
+    <div class="nav-item" data-panel="enforcement"><span class="nav-icon">&#9730;</span><span class="nav-label">Enforce</span></div>
+    <div class="nav-item" data-panel="logs"><span class="nav-icon">&#9641;</span><span class="nav-label">Logs</span></div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <section id="panel-dashboard" class="panel active">
+      <div class="section-title">Dashboard</div>
+      <div class="metric-grid" id="dash-metrics"></div>
+      <div class="section-subtitle">Recent Allocations</div>
+      <div id="dash-table"></div>
+      <div class="section-subtitle">By Project</div>
+      <div id="dash-chart"></div>
+    </section>
+
+    <!-- ALLOCATIONS -->
+    <section id="panel-allocations" class="panel">
+      <div class="section-title">Port Allocations</div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="openAllocateModal()">+ Allocate Port</button>
+        <div class="port-check-inline">
+          <input type="number" id="check-port-input" placeholder="Port #" min="1" max="65535">
+          <button class="btn btn-secondary btn-sm" onclick="checkPort()">Check</button>
+          <span id="check-port-result" class="port-check-result"></span>
+        </div>
+      </div>
+      <div id="alloc-table"></div>
+    </section>
+
+    <!-- SERVICES -->
+    <section id="panel-services" class="panel">
+      <div class="section-title">Service Launcher</div>
+      <div id="services-content"></div>
+    </section>
+
+    <!-- DISCOVERY -->
+    <section id="panel-discovery" class="panel">
+      <div class="section-title">Port Discovery</div>
+      <div class="btn-group" style="align-items: flex-end;">
+        <div class="form-group" style="margin:0"><label>Start Port</label><input type="number" id="disc-start" value="1000" style="width:100px"></div>
+        <div class="form-group" style="margin:0"><label>End Port</label><input type="number" id="disc-end" value="65535" style="width:100px"></div>
+        <label class="form-check" style="font-size:12px"><input type="checkbox" id="disc-registered"> Include Registered</label>
+        <button class="btn btn-primary" onclick="runDiscovery()">Scan</button>
+        <button class="btn btn-secondary" onclick="registerAll()">Register All</button>
+      </div>
+      <div id="disc-table"></div>
+    </section>
+
+    <!-- DOMAINS -->
+    <section id="panel-domains" class="panel">
+      <div class="section-title">Domain Management</div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="openDomainModal()">+ Add Domain</button>
+        <button class="btn btn-secondary" onclick="genConfig('nginx')">Nginx Config</button>
+        <button class="btn btn-secondary" onclick="genConfig('caddy')">Caddy Config</button>
+      </div>
+      <div id="domains-table"></div>
+      <div id="config-output"></div>
+    </section>
+
+    <!-- ENFORCEMENT -->
+    <section id="panel-enforcement" class="panel">
+      <div class="section-title">Port Enforcement</div>
+      <div class="btn-group">
+        <button class="btn btn-danger" onclick="runEnforce()">Run Enforcement</button>
+      </div>
+      <div id="enforce-result"></div>
+    </section>
+
+    <!-- LOGS -->
+    <section id="panel-logs" class="panel">
+      <div class="section-title">Service Logs</div>
+      <div class="btn-group" style="align-items: flex-end;">
+        <div class="form-group" style="margin:0"><label>Service</label><select id="log-service" style="width:200px"></select></div>
+        <div class="form-group" style="margin:0"><label>Lines</label><input type="number" id="log-lines" value="50" style="width:80px"></div>
+        <button class="btn btn-primary" onclick="fetchLogs()">Fetch Logs</button>
+      </div>
+      <div id="logs-content"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-title"></h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+/* ===== STATE ===== */
+const S = {
+  panel: 'dashboard',
+  theme: localStorage.getItem('pa-theme') || 'solari',
+  timer: null,
+  data: { health: null, metrics: null, allocations: [], services: [], domains: [], discovery: null, enforcement: null }
+};
+
+/* ===== API ===== */
+const api = {
+  async get(p) { const r = await fetch(p); if (!r.ok) throw new Error(await r.text()); const ct = r.headers.get('content-type'); return ct && ct.includes('json') ? r.json() : r.text(); },
+  async post(p, b={}) { const r = await fetch(p, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b) }); if (!r.ok) throw new Error(await r.text()); const ct = r.headers.get('content-type'); return ct && ct.includes('json') ? r.json() : r.text(); },
+  async del(p) { const r = await fetch(p, { method:'DELETE' }); if (!r.ok) throw new Error(await r.text()); return r.json(); }
+};
+
+/* ===== HELPERS ===== */
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtTime(iso) { if (!iso) return '-'; const d = new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString(); }
+function fmtUptime(s) { if (!s && s !== 0) return '-'; const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const sec = Math.floor(s%60); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+function badge(status) { const s = (status||'').toLowerCase(); const cls = s === 'running' ? 'badge-running' : s === 'active' ? 'badge-active' : s === 'stopped' ? 'badge-stopped' : s === 'crashed' ? 'badge-crashed' : 'badge-inactive'; return `<span class="badge ${cls}">${esc(status||'unknown')}</span>`; }
+
+const MTA_COLORS = ['#0039a6','#00933c','#ee352e','#b933ad','#ff6319','#fccc0a','#6cbe45','#a7a9ac','#808183','#996633'];
+function projectColor(name, i) { return MTA_COLORS[Math.abs(hashStr(name||'default')) % MTA_COLORS.length]; }
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return h; }
+
+function solariPort(port) { return String(port).split('').map(d => `<span class="solari-cell">${d}</span>`).join(''); }
+
+/* ===== TOAST ===== */
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ===== MODAL ===== */
+function openModal(title, html) { document.getElementById('modal-title').textContent = title; document.getElementById('modal-body').innerHTML = html; document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+/* ===== CLOCK ===== */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+}
+
+/* ===== HEALTH STRIP ===== */
+async function updateHealth() {
+  try {
+    S.data.health = await api.get('/health');
+    document.getElementById('health-dot').className = 'health-dot ok';
+    document.getElementById('health-status').textContent = 'Connected';
+    document.getElementById('health-allocs').textContent = S.data.health.allocations;
+    document.getElementById('health-uptime').textContent = fmtUptime(S.data.health.uptime);
+  } catch(e) {
+    document.getElementById('health-dot').className = 'health-dot err';
+    document.getElementById('health-status').textContent = 'Disconnected';
+  }
+}
+
+/* ===== THEME ===== */
+function setTheme(t) {
+  S.theme = t;
+  document.body.className = 'theme-' + t;
+  localStorage.setItem('pa-theme', t);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === t));
+}
+
+/* ===== NAVIGATION ===== */
+function switchPanel(name) {
+  S.panel = name;
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.panel === name));
+  refreshPanel();
+}
+
+/* ===== RENDER: DASHBOARD ===== */
+function renderDashboard() {
+  const m = S.data.metrics || {};
+  const a = S.data.allocations || [];
+  const pr = m.portRange || {};
+  document.getElementById('dash-metrics').innerHTML = `
+    <div class="metric-card"><div class="metric-value">${m.totalAllocations||0}</div><div class="metric-label">Total Allocations</div></div>
+    <div class="metric-card"><div class="metric-value">${m.activeAllocations||0}</div><div class="metric-label">Active</div></div>
+    <div class="metric-card"><div class="metric-value">${pr.start||'?'}-${pr.end||'?'}</div><div class="metric-label">Port Range</div></div>
+    <div class="metric-card"><div class="metric-value">${m.phiOptimized||0}</div><div class="metric-label">&phi; Optimized</div></div>
+  `;
+  if (a.length === 0) {
+    document.getElementById('dash-table').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9875;</div><p>No port allocations yet. Allocate your first port to get started.</p></div>';
+  } else {
+    const isSolari = S.theme === 'solari';
+    document.getElementById('dash-table').innerHTML = `<table class="pa-table"><thead><tr><th>Port</th><th>Service</th><th>Project</th><th>Status</th><th>Process</th><th>Allocated</th></tr></thead><tbody>` +
+      a.slice(0, 20).map(r => `<tr><td>${isSolari ? solariPort(r.port) : r.port}</td><td>${esc(r.serviceName)}</td><td>${esc(r.project)}</td><td>${badge(r.status)}</td><td>${badge(r.process_status||'stopped')}</td><td>${fmtTime(r.allocatedAt)}</td></tr>`).join('') +
+      `</tbody></table>` + (a.length > 20 ? `<p style="margin-top:12px;font-size:12px;color:var(--text-secondary)">Showing 20 of ${a.length}. <a href="#" onclick="switchPanel('allocations');return false" style="color:var(--accent)">View all &rarr;</a></p>` : '');
+  }
+  // Project chart
+  const bp = m.byProject || {};
+  const total = Object.values(bp).reduce((s,v) => s+v, 0) || 1;
+  document.getElementById('dash-chart').innerHTML = Object.keys(bp).length === 0 ? '<div style="color:var(--text-secondary);font-size:13px">No projects</div>' :
+    '<div class="bar-chart">' + Object.entries(bp).map(([k,v]) => {
+      const pct = Math.max(Math.round(v/total*100), 5);
+      const color = S.theme === 'mta' ? projectColor(k) : 'var(--accent)';
+      return `<div class="bar-row"><div class="bar-label">${esc(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${v}</div></div></div>`;
+    }).join('') + '</div>';
+}
+
+/* ===== RENDER: ALLOCATIONS ===== */
+function renderAllocations() {
+  const a = S.data.allocations || [];
+  if (a.length === 0) {
+    document.getElementById('alloc-table').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9875;</div><p>No allocations. Click "Allocate Port" to create one.</p></div>';
+    return;
+  }
+  const isSolari = S.theme === 'solari';
+  document.getElementById('alloc-table').innerHTML = `<table class="pa-table"><thead><tr><th>Port</th><th>Service</th><th>Project</th><th>Priority</th><th>Status</th><th>Process</th><th>&phi;</th><th>Allocated</th><th>Actions</th></tr></thead><tbody>` +
+    a.map(r => `<tr>
+      <td>${isSolari ? solariPort(r.port) : `<strong>${r.port}</strong>`}</td>
+      <td>${esc(r.serviceName)}</td><td>${esc(r.project)}</td><td>${r.priority}</td>
+      <td>${badge(r.status)}</td><td>${badge(r.process_status||'stopped')}</td>
+      <td>${r.phiOptimized ? '&phi;' : '-'}</td><td>${fmtTime(r.allocatedAt)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="releasePort('${esc(r.serviceName)}')">Release</button></td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+/* ===== RENDER: SERVICES ===== */
+function renderServices() {
+  const svcs = S.data.services || [];
+  if (svcs.length === 0) {
+    document.getElementById('services-content').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9654;</div><p>No services found. Launch a service from the Allocations panel or use the CLI.</p></div>';
+    return;
+  }
+  const isMTA = S.theme === 'mta';
+  document.getElementById('services-content').innerHTML = '<div class="card-grid">' +
+    svcs.map(s => {
+      const color = isMTA ? projectColor(s.project||'default') : 'var(--accent)';
+      return `<div class="card" ${isMTA ? `style="border-left-color:${color}"` : ''}>
+        <div class="card-header">
+          ${isMTA ? `<div class="route-bullet" style="background:${color}">${s.port}</div>` : ''}
+          <div class="card-title">${esc(s.serviceName)}</div>
+          ${badge(s.status||s.process_status||'stopped')}
+        </div>
+        <div class="card-meta">
+          Port: ${s.port}<br>
+          Project: ${esc(s.project||'default')}<br>
+          PID: ${s.pid || '-'}<br>
+          Command: ${esc(s.command || '-')}<br>
+          Started: ${fmtTime(s.startedAt||s.process_started_at)}<br>
+          Auto-restart: ${s.autoRestart||s.auto_restart ? 'Yes' : 'No'}
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-primary btn-sm" onclick="openLaunchModal('${esc(s.serviceName)}')">Launch</button>
+          <button class="btn btn-danger btn-sm" onclick="stopService('${esc(s.serviceName)}')">Stop</button>
+          <button class="btn btn-secondary btn-sm" onclick="restartService('${esc(s.serviceName)}')">Restart</button>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+/* ===== RENDER: DISCOVERY ===== */
+function renderDiscovery() {
+  const d = S.data.discovery;
+  if (!d) {
+    document.getElementById('disc-table').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9678;</div><p>Click "Scan" to discover services running on your system.</p></div>';
+    return;
+  }
+  if (d.services.length === 0) {
+    document.getElementById('disc-table').innerHTML = '<div class="empty-state"><p>No services discovered in the scanned range.</p></div>';
+    return;
+  }
+  document.getElementById('disc-table').innerHTML = `<p style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">${d.count} services found</p>
+    <table class="pa-table"><thead><tr><th>Port</th><th>PID</th><th>Command</th><th>User</th><th>Inferred Name</th><th>Registered</th><th>Actions</th></tr></thead><tbody>` +
+    d.services.map(s => `<tr>
+      <td><strong>${s.port}</strong></td><td>${s.pid||'-'}</td><td title="${esc(s.command||'')}">${esc((s.command||'').substring(0,40))}</td>
+      <td>${esc(s.user||'-')}</td><td>${esc(s.inferredServiceName||'-')}</td>
+      <td>${s.registered ? `<span style="color:var(--status-running)">Yes</span> (${esc(s.registeredAs||'')})` : 'No'}</td>
+      <td>${!s.registered ? `<button class="btn btn-primary btn-sm" onclick="registerPort(${s.port},'${esc(s.inferredServiceName||'')}')">Register</button>` : '-'}</td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+/* ===== RENDER: DOMAINS ===== */
+function renderDomains() {
+  const d = S.data.domains || [];
+  if (d.length === 0) {
+    document.getElementById('domains-table').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9673;</div><p>No domain mappings. Click "Add Domain" to create one.</p></div>';
+    return;
+  }
+  document.getElementById('domains-table').innerHTML = `<table class="pa-table"><thead><tr><th>Domain</th><th>Service</th><th>SSL</th><th>Proxy</th><th>Verified</th><th>Created</th><th>Actions</th></tr></thead><tbody>` +
+    d.map(r => `<tr>
+      <td><strong>${esc(r.domain)}</strong></td><td>${esc(r.serviceName)}</td>
+      <td>${r.ssl ? '<span style="color:var(--status-running)">Yes</span>' : 'No'}</td>
+      <td>${esc(r.proxyType||'http')}</td>
+      <td>${r.verified ? '<span style="color:var(--status-running)">Yes</span>' : 'No'}</td>
+      <td>${fmtTime(r.createdAt)}</td>
+      <td>
+        ${!r.verified ? `<button class="btn btn-secondary btn-sm" onclick="verifyDomain('${esc(r.domain)}')">Verify</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="removeDomain('${esc(r.domain)}')">Remove</button>
+      </td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+/* ===== RENDER: ENFORCEMENT ===== */
+function renderEnforcement() {
+  const e = S.data.enforcement;
+  if (!e) {
+    document.getElementById('enforce-result').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9730;</div><p>Click "Run Enforcement" to check for unauthorized processes on allocated ports.</p></div>';
+    return;
+  }
+  const v = e.violations || [];
+  document.getElementById('enforce-result').innerHTML = `<p style="margin-bottom:16px">Killed: <strong>${e.killed||0}</strong> | Violations: <strong>${v.length}</strong></p>` +
+    (v.length === 0 ? '<p style="color:var(--status-running)">No violations found. All ports clean.</p>' :
+    `<table class="pa-table"><thead><tr><th>Port</th><th>Service</th><th>PID</th><th>Status</th></tr></thead><tbody>` +
+    v.map(vi => `<tr><td>${vi.port}</td><td>${esc(vi.serviceName||'-')}</td><td>${vi.pid||'-'}</td><td>${esc(vi.status||'-')}</td></tr>`).join('') + '</tbody></table>');
+}
+
+/* ===== RENDER: LOGS ===== */
+function renderLogServiceDropdown() {
+  const sel = document.getElementById('log-service');
+  const a = S.data.allocations || [];
+  sel.innerHTML = '<option value="">-- Select --</option>' + a.map(r => `<option value="${esc(r.serviceName)}">${esc(r.serviceName)}</option>`).join('');
+}
+
+/* ===== ACTIONS ===== */
+async function checkPort() {
+  const port = document.getElementById('check-port-input').value;
+  if (!port) return;
+  try {
+    const r = await api.get('/check/' + port);
+    const el = document.getElementById('check-port-result');
+    el.textContent = r.available ? `Port ${port} is available` : `Port ${port} is in use`;
+    el.style.color = r.available ? 'var(--status-running)' : 'var(--status-stopped)';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function openAllocateModal() {
+  openModal('Allocate Port', `
+    <form onsubmit="submitAllocate(event)">
+      <div class="form-group"><label>Service Name *</label><input id="alloc-name" required placeholder="my-service"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Preferred Port</label><input type="number" id="alloc-port" placeholder="Auto" min="1" max="65535"></div>
+        <div class="form-group"><label>Priority (1-5)</label><input type="number" id="alloc-priority" value="1" min="1" max="5"></div>
+      </div>
+      <div class="form-group"><label>Project</label><input id="alloc-project" value="default"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">Allocate</button>
+    </form>
+  `);
+}
+
+async function submitAllocate(e) {
+  e.preventDefault();
+  const body = { serviceName: document.getElementById('alloc-name').value, priority: parseInt(document.getElementById('alloc-priority').value) || 1, project: document.getElementById('alloc-project').value || 'default' };
+  const port = document.getElementById('alloc-port').value;
+  if (port) body.preferredPort = parseInt(port);
+  try { await api.post('/allocate', body); closeModal(); toast(`Port allocated for ${body.serviceName}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function releasePort(name) {
+  if (!confirm(`Release port allocation for "${name}"?`)) return;
+  try { await api.post('/release', { serviceName: name }); toast(`Released ${name}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+function openLaunchModal(name) {
+  openModal('Launch ' + name, `
+    <form onsubmit="submitLaunch(event, '${esc(name)}')">
+      <div class="form-group"><label>Command *</label><input id="launch-cmd" required placeholder="node server.js"></div>
+      <div class="form-group"><label>Working Directory</label><input id="launch-cwd" placeholder="/path/to/project"></div>
+      <div class="form-group"><label>Environment (JSON)</label><textarea id="launch-env" rows="3" placeholder='{"NODE_ENV":"production"}'></textarea></div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="launch-restart"> Auto-restart on crash</label></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">Launch</button>
+    </form>
+  `);
+}
+
+async function submitLaunch(e, name) {
+  e.preventDefault();
+  const body = { command: document.getElementById('launch-cmd').value, autoRestart: document.getElementById('launch-restart').checked, captureOutput: true };
+  const cwd = document.getElementById('launch-cwd').value;
+  if (cwd) body.cwd = cwd;
+  const envStr = document.getElementById('launch-env').value;
+  if (envStr) try { body.env = JSON.parse(envStr); } catch(e) { toast('Invalid JSON for environment', 'error'); return; }
+  try { await api.post('/launcher/launch/' + encodeURIComponent(name), body); closeModal(); toast(`Launched ${name}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function stopService(name) {
+  if (!confirm(`Stop service "${name}"?`)) return;
+  try { await api.post('/launcher/stop/' + encodeURIComponent(name)); toast(`Stopped ${name}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function restartService(name) {
+  if (!confirm(`Restart service "${name}"?`)) return;
+  try { await api.post('/launcher/restart/' + encodeURIComponent(name)); toast(`Restarted ${name}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function runDiscovery() {
+  const start = document.getElementById('disc-start').value || 1000;
+  const end = document.getElementById('disc-end').value || 65535;
+  const incReg = document.getElementById('disc-registered').checked;
+  try { S.data.discovery = await api.get(`/discover?start=${start}&end=${end}&includeRegistered=${incReg}`); renderDiscovery(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function registerPort(port, inferredName) {
+  const name = prompt('Service name:', inferredName) || inferredName;
+  if (!name) return;
+  try { await api.post(`/discover/register/${port}`, { serviceName: name }); toast(`Registered port ${port}`); runDiscovery(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function registerAll() {
+  if (!confirm('Register all discovered services?')) return;
+  const start = document.getElementById('disc-start').value || 1000;
+  const end = document.getElementById('disc-end').value || 65535;
+  try { const r = await api.post('/discover/register-all', { portRangeStart: parseInt(start), portRangeEnd: parseInt(end) }); toast(`Registered ${r.succeeded} of ${r.total}`); runDiscovery(); } catch(e) { toast(e.message, 'error'); }
+}
+
+function openDomainModal() {
+  const opts = (S.data.allocations||[]).map(a => `<option value="${esc(a.serviceName)}">${esc(a.serviceName)}</option>`).join('');
+  openModal('Add Domain', `
+    <form onsubmit="submitDomain(event)">
+      <div class="form-group"><label>Domain *</label><input id="dom-domain" required placeholder="api.example.com"></div>
+      <div class="form-group"><label>Service *</label><select id="dom-service" required>${opts}</select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-check"><input type="checkbox" id="dom-ssl"> SSL</label></div>
+        <div class="form-group"><label>Proxy Type</label><select id="dom-proxy"><option value="http">HTTP</option><option value="websocket">WebSocket</option></select></div>
+      </div>
+      <div class="form-group"><label>Cert Path</label><input id="dom-cert" placeholder="/path/to/cert.pem"></div>
+      <div class="form-group"><label>Key Path</label><input id="dom-key" placeholder="/path/to/key.pem"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px">Add Domain</button>
+    </form>
+  `);
+}
+
+async function submitDomain(e) {
+  e.preventDefault();
+  const body = {
+    domain: document.getElementById('dom-domain').value,
+    serviceName: document.getElementById('dom-service').value,
+    ssl: document.getElementById('dom-ssl').checked,
+    proxyType: document.getElementById('dom-proxy').value
+  };
+  const cert = document.getElementById('dom-cert').value; if (cert) body.certPath = cert;
+  const key = document.getElementById('dom-key').value; if (key) body.keyPath = key;
+  try { await api.post('/domains', body); closeModal(); toast(`Added domain ${body.domain}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function verifyDomain(domain) {
+  try { await api.post(`/domains/${encodeURIComponent(domain)}/verify`); toast(`Verified ${domain}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function removeDomain(domain) {
+  if (!confirm(`Remove domain "${domain}"?`)) return;
+  try { await api.del(`/domains/${encodeURIComponent(domain)}`); toast(`Removed ${domain}`); refreshPanel(); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function genConfig(type) {
+  try {
+    const txt = await api.get(`/domains/config/${type}`);
+    document.getElementById('config-output').innerHTML = `<div class="section-subtitle">${type.toUpperCase()} Configuration</div><div style="position:relative"><pre class="config-pre">${esc(txt)}</pre><button class="copy-btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);toast('Copied!')">Copy</button></div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function runEnforce() {
+  if (!confirm('Run port enforcement? This may kill unauthorized processes.')) return;
+  try { S.data.enforcement = await api.post('/enforce'); renderEnforcement(); toast(`Enforcement complete: ${S.data.enforcement.killed||0} killed`); } catch(e) { toast(e.message, 'error'); }
+}
+
+async function fetchLogs() {
+  const name = document.getElementById('log-service').value;
+  if (!name) { toast('Select a service first', 'error'); return; }
+  const lines = document.getElementById('log-lines').value || 50;
+  try {
+    const r = await api.get(`/launcher/logs/${encodeURIComponent(name)}?lines=${lines}`);
+    document.getElementById('logs-content').innerHTML = `<div class="log-viewer">
+      <div class="log-block"><h4 style="color:var(--status-running)">stdout</h4><pre class="log-pre">${esc((r.stdout||[]).join('\n') || '(empty)')}</pre></div>
+      <div class="log-block"><h4 style="color:var(--status-stopped)">stderr</h4><pre class="log-pre">${esc((r.stderr||[]).join('\n') || '(empty)')}</pre></div>
+    </div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ===== REFRESH ===== */
+async function refreshPanel() {
+  try {
+    switch (S.panel) {
+      case 'dashboard':
+        [S.data.metrics, S.data.allocations] = await Promise.all([api.get('/metrics'), api.get('/allocations')]);
+        renderDashboard(); break;
+      case 'allocations':
+        S.data.allocations = await api.get('/allocations');
+        renderAllocations(); break;
+      case 'services':
+        try { const r = await api.get('/launcher/status'); S.data.services = r.services || r || []; } catch(e) { S.data.services = S.data.allocations || []; }
+        renderServices(); break;
+      case 'domains':
+        S.data.domains = await api.get('/domains');
+        renderDomains(); break;
+      case 'enforcement':
+        renderEnforcement(); break;
+      case 'logs':
+        S.data.allocations = await api.get('/allocations');
+        renderLogServiceDropdown(); break;
+      case 'discovery':
+        renderDiscovery(); break;
+    }
+  } catch(e) { console.error('Refresh error:', e); }
+  updateHealth();
+}
+
+/* ===== INIT ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  setTheme(S.theme);
+  // Nav
+  document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => switchPanel(n.dataset.panel)));
+  // Theme buttons
+  document.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.theme)));
+  // Clock
+  updateClock();
+  setInterval(updateClock, 1000);
+  // Initial load
+  refreshPanel();
+  // Auto refresh
+  S.timer = setInterval(refreshPanel, 5000);
+  // Close modal on overlay click
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+  // Keyboard
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+});
+</script>
+</body>
+</html>

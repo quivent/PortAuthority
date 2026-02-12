@@ -31,6 +31,7 @@ const restartCommand = require('./src/commands/restart');
 const psCommand = require('./src/commands/ps');
 const logsCommand = require('./src/commands/logs');
 const domainsProgram = require('./src/commands/domains');
+const daemonCommand = require('./src/commands/daemon');
 
 const program = new Command();
 
@@ -192,6 +193,13 @@ program
         .name('domains')
         .description(chalk.cyan('🌐 ') + 'Manage domain-to-service mappings')
     );
+
+// ⚙️ DAEMON MANAGEMENT
+program
+    .command('daemon [action]')
+    .description(chalk.gray('⚙️  ') + 'Manage the Port Authority daemon (start|stop|restart|status|logs)')
+    .option('-n, --lines <number>', 'Number of log lines to show', '50')
+    .action(daemonCommand);
 
 // Handle no command (show help)
 if (process.argv.length === 2) {
